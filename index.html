@@ -440,6 +440,33 @@
   .sim-cart .slot { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px; }
   @media (max-width: 1100px) { #editor { grid-template-columns: 200px minmax(0, 1fr) 320px; } }
 
+  /* ---------- motion: every change of state eases instead of snapping ---------- */
+  :root { --ease-out: cubic-bezier(.16, 1, .3, 1); }
+  .view.active { animation: viewIn .5s var(--ease-out); }
+  @keyframes viewIn { from { opacity: 0; transform: translateY(6px); } }
+  .btn, .chip, .seg button, .slot-chip, nav button, .sim-cart, .scene, .crow, .pin-card, .qm, .rv-close, .ring-nav, select, input[type=text], input[type=number], textarea {
+    transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease, opacity .25s ease, transform .25s var(--ease-out); }
+  .btn:active, .chip:active, .slot-chip:active { transform: scale(.97); }
+  /* sliding pill behind the active C1–C7 chip */
+  .slot-nav { position: relative; }
+  .slot-pill { position: absolute; left: 0; top: 0; border-radius: 999px; background: #f2f2f2; pointer-events: none; z-index: 0;
+    transition: transform .55s var(--ease-out), width .55s var(--ease-out); }
+  .slot-nav .slot-chip { position: relative; z-index: 1; }
+  .slot-nav .slot-chip.on { background: transparent; border-color: transparent; color: #0a0a0a; box-shadow: none; }
+  .cart-detail { overflow: hidden; }
+  .hcard .hc-face { transition: box-shadow .6s ease; }
+  /* simulator image cross-fade */
+  .view-ghost { position: absolute; pointer-events: none; z-index: 1; }
+  /* dialogs ease in */
+  dialog[open] { animation: dlgIn .38s var(--ease-out); }
+  dialog::backdrop { animation: fadeIn .38s ease; }
+  @keyframes dlgIn { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+  @keyframes fadeIn { from { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .view.active, dialog[open], dialog::backdrop { animation: none; }
+    .slot-pill, .hcard .hc-face { transition: none; }
+  }
+
   /* ---------- desktop frame: consistent gutters, capped width ---------- */
   #home, #library, #cartridges, #compare, #calibrate { padding-left: var(--gutter); padding-right: var(--gutter); max-width: var(--page-max); margin: 0 auto; width: 100%; }
   header { max-width: none; }
@@ -727,13 +754,13 @@
   <div class="foot"><button class="btn danger" id="pickClear">Clear slot</button><button class="btn" id="pickCancel">Cancel</button></div>
 </dialog>
 
-<script src="film-engine.js?v=20261118-16"></script>
-<script src="my-recipes.js?v=20261118-16"></script>
-<script src="samples.js?v=20261118-16"></script>
-<script src="recipe-tools.js?v=20261118-16"></script>
-<script src="app.js?v=20261118-16"></script>
-<script src="calibrate.js?v=20261118-16"></script>
+<script src="film-engine.js?v=20261118-17"></script>
+<script src="my-recipes.js?v=20261118-17"></script>
+<script src="samples.js?v=20261118-17"></script>
+<script src="recipe-tools.js?v=20261118-17"></script>
+<script src="app.js?v=20261118-17"></script>
+<script src="calibrate.js?v=20261118-17"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="camera3d.js?v=20261118-16"></script>
+<script src="camera3d.js?v=20261118-17"></script>
 </body>
 </html>

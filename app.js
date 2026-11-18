@@ -361,6 +361,7 @@
       c.getContext('2d').drawImage(img, 0, 0);
       setOrig({ aperture: 8, shutter: 1 / 250, iso: 200 });
       state.scene = sc;
+      state.fadeNext = true;
       setFullImage(c);
       $('badge').textContent += ` · ${sc.title}`;
       renderScenes();
@@ -534,6 +535,17 @@
   }
   function draw() {
     const cv = $('view'), ctx = cv.getContext('2d');
+    if (state.fadeNext && !reduceMotion && cv.width > 1 && cv.clientWidth) {
+      // snapshot of the previous look, laid over the canvas and faded away
+      const ghost = document.createElement('canvas');
+      ghost.width = cv.width; ghost.height = cv.height;
+      ghost.getContext('2d').drawImage(cv, 0, 0);
+      ghost.className = 'view-ghost';
+      Object.assign(ghost.style, { left: cv.offsetLeft + 'px', top: cv.offsetTop + 'px', width: cv.clientWidth + 'px', height: cv.clientHeight + 'px' });
+      cv.parentElement.appendChild(ghost);
+      ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' }).finished.then(() => ghost.remove());
+    }
+    state.fadeNext = false;
     cv.width = state.src.width; cv.height = state.src.height;
     if (state.showOriginal) { ctx.putImageData(state.src, 0, 0); return; }
     ctx.putImageData(lastOut, 0, 0);
@@ -564,6 +576,7 @@
 
   // ---------------- editor actions ----------------
   function loadRecipe(entry) {
+    state.fadeNext = true;
     state.recipe = { ...FE.DEFAULT_RECIPE, ...entry.recipe };
     state.loadedId = entry.id;
     if (!$('editor').classList.contains('active')) switchTab('editor');
@@ -1418,10 +1431,48 @@
   const THICK = 8, COPIES = 2;
   const homeSize = () => (innerWidth >= 1300 ? 216 : 180);
   function renderCartDetail(ci) {
-    const ring = homeRing, r = ring.items[ci], rp = getRepertoire(), i = ci % rp.length;
+    const ring = homeRing, rp = getRepertoire(), i = ci % rp.length;
     $('slotNav').querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
+    moveSlotPill(i);
     ring.cards.forEach((c, k) => c.classList.toggle('front', k === ci));
-    const el = $('cartDetail');
+    swapDetail(ci);
+  }
+  // slide the white pill under the active slot chip instead of jumping
+  function moveSlotPill(i) {
+    const nav = $('slotNav'), btn = nav.querySelectorAll('button')[i], pill = nav.querySelector('.slot-pill');
+    if (!btn || !pill) return;
+    const first = !pill.classList.contains('placed');
+    if (first) pill.style.transition = 'none';
+    pill.style.width = btn.offsetWidth + 'px';
+    pill.style.height = btn.offsetHeight + 'px';
+    pill.style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
+    if (first) { pill.getBoundingClientRect(); pill.style.transition = ''; pill.classList.add('placed'); }
+  }
+  // old details fade up and out, new ones rise in, and the panel's height eases between them;
+  // changes that arrive mid-transition are folded into the next one so it never flickers
+  let cdPending = null, cdBusy = false;
+  function swapDetail(ci) {
+    const box = $('cartDetail');
+    const build = (k) => { const inner = document.createElement('div'); inner.className = 'cd-inner'; fillCartDetail(inner, k); return inner; };
+    if (reduceMotion || !box.firstElementChild) { box.replaceChildren(build(ci)); return; }
+    cdPending = ci;
+    if (cdBusy) return;
+    cdBusy = true;
+    const old = box.firstElementChild, h0 = box.getBoundingClientRect().height;
+    old.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 170, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards' }).finished.then(() => {
+      const k = cdPending;
+      cdPending = null;
+      const inner = build(k);
+      box.replaceChildren(inner);
+      const h1 = box.getBoundingClientRect().height;
+      if (Math.abs(h1 - h0) > 1) box.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: 420, easing: EASE.out });
+      inner.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: EASE.out, fill: 'both' });
+      cdBusy = false;
+      if (cdPending !== null && cdPending !== k) swapDetail(cdPending);
+    });
+  }
+  function fillCartDetail(el, ci) {
+    const ring = homeRing, r = ring.items[ci], rp = getRepertoire(), i = ci % rp.length;
     if (!r) {
       el.innerHTML = `<div class="cd-head display"><span class="kicker">C${i + 1}</span><h2>Empty slot</h2></div>
         <p class="hint">Nothing is loaded in C${i + 1} yet.</p>
@@ -1499,7 +1550,7 @@
     ring.reflEl = null;
     attachRingDrag(stage, ring);
     ring.onFront = renderCartDetail;
-    $('slotNav').innerHTML = slots.map((r, i) => `<button class="slot-chip${r ? '' : ' none'}" data-i="${i}" aria-label="Show C${i + 1}">C${i + 1}</button>`).join('');
+    $('slotNav').innerHTML = '<span class="slot-pill" aria-hidden="true"></span>' + slots.map((r, i) => `<button class="slot-chip${r ? '' : ' none'}" data-i="${i}" aria-label="Show C${i + 1}">C${i + 1}</button>`).join('');
     $('slotNav').querySelectorAll('button').forEach((b) => (b.onclick = () => {
       const sl = Number(b.dataset.i);
       let best = sl, bd = Infinity;
