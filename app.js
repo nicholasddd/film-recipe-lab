@@ -534,7 +534,7 @@
     if (split > 0) {
       const sx = Math.round(cv.width * split);
       ctx.putImageData(state.src, 0, 0, 0, 0, sx, cv.height);
-      ctx.fillStyle = '#258bff'; ctx.fillRect(sx - 1, 0, 2, cv.height);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 1, 0, 2, cv.height);
     }
   }
 
@@ -840,6 +840,11 @@
     for (const ring of allRings()) ring.k = Math.min(1, (ring.stage.clientWidth - 24) / (2 * ring.R + (ring.cardW || CARD_W) * 1.4));
   }
   window.addEventListener('resize', fitRings);
+  let homeSizeSeen = 0;
+  window.addEventListener('resize', () => {
+    const sz = homeSize();
+    if (sz !== homeSizeSeen && homeRing && $('home').classList.contains('active')) { homeSizeSeen = sz; renderHome(); }
+  });
 
   function orbitTick() {
     for (const ring of allRings()) {
@@ -1375,7 +1380,9 @@
   };
   // the loaded cartridges (C1–C7) as a revolving carousel; the front one is described below it
   const KEY_LIGHT = -24; // yaw (degrees) between the studio key light and the camera
-  const HOME_W = 180, HOME_H = 240, THICK = 8, COPIES = 2;
+  let HOME_W = 180, HOME_H = 240;
+  const THICK = 8, COPIES = 2;
+  const homeSize = () => (innerWidth >= 1300 ? 216 : 180);
   function renderCartDetail(ci) {
     const ring = homeRing, r = ring.items[ci], rp = getRepertoire(), i = ci % rp.length;
     $('slotNav').querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
@@ -1405,10 +1412,12 @@
     el.querySelector('[data-a=rm]').onclick = () => { rp[i] = null; persist(); renderHome(); };
   }
   function renderHome() {
+    HOME_W = homeSize();
+    HOME_H = Math.round((HOME_W * 4) / 3);
     const rp = getRepertoire();
     const slots = rp.map((id) => (id && store.recipes.find((x) => x.id === id)) || null);
     const items = Array.from({ length: slots.length * COPIES }, (_, j) => slots[j % slots.length]);
-    const n = items.length, step = 360 / n, R = 340, FOCUS = 0; // the card at the front centre is the one shown below
+    const n = items.length, step = 360 / n, R = Math.round(HOME_W * 1.85), FOCUS = 0; // the card at the front centre is the one shown below
     const first = homeRing ? null : Math.max(0, slots.findIndex(Boolean));
     homeRing = Object.assign(homeRing || { theta: FOCUS - first * step, vel: 0, snap: null }, {
       n, step, R, items, cardW: HOME_W, drag: null, hover: false, fi: -1, visible: true,
@@ -1416,7 +1425,9 @@
       focus: FOCUS, cardTurn: -90, zPush: 420, faceFront: true, settle: true, shadeMin: 0.45, // zPush: camera distance from the ring centre
     });
     const ring = homeRing, stage = $('homeStage'), ringEl = $('homeRing');
-    stage.style.height = Math.round(HOME_H * 1.65) + 'px';
+    stage.style.height = Math.round(HOME_H * 1.75) + 'px';
+    stage.style.setProperty('--hw', HOME_W + 'px');
+    stage.style.setProperty('--hh', HOME_H + 'px');
     ring.el = ringEl;
     ring.stage = stage;
     ringEl.innerHTML = '';

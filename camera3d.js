@@ -41,15 +41,15 @@
     envScene.add(m);
   };
   box(22, 5, 0, 22, 6, 0, 0.9, 0xffffff);       // overhead strip
-  box(5, 20, -24, 4, 10, 0, 0.7, 0xfff1e6);     // warm key, left
-  box(4, 18, 24, 2, -6, 0, 0.45, 0xe6eeff);     // cool rim, right-back
+  box(5, 20, -24, 4, 10, 0, 0.7, 0xffffff);     // key, left
+  box(4, 18, 24, 2, -6, 0, 0.45, 0xffffff);     // rim, right-back
   scene.environment = pmrem.fromScene(envScene, 0.035).texture;
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x1a1512, 0.18));
-  const key = new THREE.DirectionalLight(0xfff4ea, 1.25);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x161616, 0.18));
+  const key = new THREE.DirectionalLight(0xffffff, 1.25);
   key.position.set(-10, 14, 16);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0xdfe8ff, 0.8);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.8);
   rim.position.set(12, 6, -14);
   scene.add(rim);
 
@@ -94,11 +94,11 @@
     plate: new THREE.MeshPhysicalMaterial({ color: 0x141416, roughness: 0.32, metalness: 0.7, clearcoat: 0.2, clearcoatRoughness: 0.3, envMapIntensity: 0.45 }),
     leather: new THREE.MeshStandardMaterial({ color: 0x080809, roughness: 0.92, metalness: 0, bumpMap: leather, bumpScale: 0.05, envMapIntensity: 0.1 }),
     dialSide: (n) => new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 0.3, metalness: 0.85, envMapIntensity: 0.5, bumpMap: (() => { const t = ridges(n); t.wrapS = THREE.RepeatWrapping; return t; })(), bumpScale: 0.04 }),
-    silver: new THREE.MeshStandardMaterial({ color: 0xd2d5d9, roughness: 0.22, metalness: 1, envMapIntensity: 0.8 }),
+    silver: new THREE.MeshStandardMaterial({ color: 0xd4d4d4, roughness: 0.22, metalness: 1, envMapIntensity: 0.8 }),
     barrel: new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.5, metalness: 0.35, envMapIntensity: 0.22 }),
     rubber: new THREE.MeshStandardMaterial({ color: 0x070708, envMapIntensity: 0.1, roughness: 0.85, metalness: 0, bumpMap: (() => { const t = ridges(90); t.wrapS = THREE.RepeatWrapping; return t; })(), bumpScale: 0.08 }),
     glass: new THREE.MeshPhysicalMaterial({ color: 0x010204, roughness: 0.03, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 0.45, transparent: true, opacity: 0.55 }),
-    coating: new THREE.MeshPhysicalMaterial({ color: 0x1b1030, emissive: 0x150a26, roughness: 0.15, metalness: 0.6, clearcoat: 1, envMapIntensity: 0.7 }),
+    coating: new THREE.MeshPhysicalMaterial({ color: 0x161616, emissive: 0x0c0c0c, roughness: 0.15, metalness: 0.6, clearcoat: 1, envMapIntensity: 0.7 }),
     black: new THREE.MeshStandardMaterial({ color: 0x0a0a0b, roughness: 0.6, metalness: 0.2 }),
   };
 
