@@ -385,6 +385,133 @@
     $('sceneCredit').innerHTML = sc ? `<b>${esc(sc.label)}</b>: ${esc(sc.tests)} · Photo: <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a>, <a href="${sc.licenseUrl}" target="_blank" rel="noopener">${esc(sc.license)}</a>, via Wikimedia Commons (shown with the recipe applied)` : '';
   }
 
+  // ---------------- compare: 2–4 cartridges across the sample scenes ----------------
+  const CMP_MAX = 4, CMP_KEY = 'filmRecipeLab.compare';
+  const NEUTRAL_EXPOSURE = { orig: { aperture: 8, shutter: 1 / 250, iso: 200 }, next: { aperture: 8, shutter: 1 / 250, iso: 200 }, ec: 0 };
+  let cmpIds = (() => { try { return JSON.parse(localStorage.getItem(CMP_KEY)) || null; } catch (e) { return null; } })();
+  let cmpGen = 0, cmpFocusIdx = -1;
+  const sceneImgs = new Map(), cmpOut = new Map(), cmpNoise = new Map();
+  // a scene as ImageData at a Wikimedia thumbnail width (330 for the grid, 960 for the large view)
+  function sceneData(sc, width) {
+    const k = sc.key + '@' + width;
+    if (!sceneImgs.has(k)) sceneImgs.set(k, new Promise((res, rej) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.drawImage(img, 0, 0);
+        res(g.getImageData(0, 0, c.width, c.height));
+      };
+      img.onerror = () => { sceneImgs.delete(k); rej(new Error('scene load failed')); };
+      img.src = sc.src.replace('/1280px-', `/${width}px-`);
+    }));
+    return sceneImgs.get(k);
+  }
+  // recipe applied to a scene; null recipe = the original photo
+  function cmpRender(recipe, sc, src) {
+    const k = (recipe ? JSON.stringify(recipe) : 'original') + '|' + sc.key + '|' + src.width;
+    if (!cmpOut.has(k)) {
+      if (!recipe) cmpOut.set(k, src);
+      else {
+        const nk = src.width + 'x' + src.height;
+        if (!cmpNoise.has(nk)) cmpNoise.set(nk, FE.makeNoise(src.width, src.height, 11));
+        // effects scale as if the photo were ~4000px wide, like a camera file seen at this size
+        cmpOut.set(k, FE.process(src, recipe, NEUTRAL_EXPOSURE, { scale: src.width / 4000, offX: 0, offY: 0, fullW: src.width, fullH: src.height }, cmpNoise.get(nk)));
+      }
+    }
+    return cmpOut.get(k);
+  }
+  const paint = (cv, img) => { cv.width = img.width; cv.height = img.height; cv.getContext('2d').putImageData(img, 0, 0); cv.classList.add('ready'); };
+  function cmpSelected() {
+    const have = new Set(store.recipes.map((r) => r.id));
+    if (!cmpIds) {
+      const rp = getRepertoire().filter(Boolean);
+      cmpIds = (rp.length >= 2 ? rp : store.recipes.map((r) => r.id)).slice(0, 3);
+    }
+    cmpIds = cmpIds.filter((id) => have.has(id)).slice(0, CMP_MAX);
+    return cmpIds.map((id) => store.recipes.find((r) => r.id === id));
+  }
+  function saveCmp() { try { localStorage.setItem(CMP_KEY, JSON.stringify(cmpIds)); } catch (e) { /* ignore */ } }
+
+  function renderCompare() {
+    const sel = cmpSelected(), rp = getRepertoire();
+    // picker: cartridges in the camera first, then the rest of the library
+    const ordered = [...store.recipes].sort((a, b) => ((rp.indexOf(a.id) + 1 || 99) - (rp.indexOf(b.id) + 1 || 99)) || (a.aka || a.name).localeCompare(b.aka || b.name));
+    $('cmpCarts').innerHTML = ordered.map((r) => {
+      const slot = rp.indexOf(r.id);
+      return `<button class="chip${cmpIds.includes(r.id) ? ' on' : ''}" data-id="${r.id}">${slot >= 0 ? `<span class="n">C${slot + 1}</span> ` : ''}${esc(r.aka || splitName(r.name)[1])}</button>`;
+    }).join('');
+    $('cmpCount').textContent = `${sel.length} of ${CMP_MAX} chosen`;
+    $('cmpCarts').querySelectorAll('.chip').forEach((b) => (b.onclick = () => {
+      const id = b.dataset.id;
+      if (cmpIds.includes(id)) cmpIds = cmpIds.filter((x) => x !== id);
+      else if (cmpIds.length >= CMP_MAX) { $('cmpCount').textContent = `Up to ${CMP_MAX} at a time. Remove one first.`; $('cmpCount').classList.add('warn'); return; }
+      else cmpIds.push(id);
+      $('cmpCount').classList.remove('warn');
+      saveCmp();
+      renderCompare();
+    }));
+
+    const grid = $('cmpGrid');
+    const rows = [null, ...sel];
+    grid.style.setProperty('--cols', SCENES.length);
+    grid.innerHTML = '<div class="cmp-corner"></div>' + SCENES.map((sc, j) =>
+      `<button class="cmp-col" data-j="${j}" title="${esc(sc.tests)}"><b>${esc(sc.label)}</b><small>${esc(sc.tests)}</small></button>`).join('')
+      + rows.map((r, i) => {
+        const [code, title] = r ? splitName(r.name) : ['', ''];
+        return `<div class="cmp-row${r ? '' : ' original'}">${r
+          ? `<b>${esc(r.aka || title)}</b><small>${code ? esc(code) + ' · ' : ''}${esc(FE.SIMS[r.recipe.sim].name)}</small><button class="cmp-x" data-id="${r.id}" aria-label="Remove ${esc(r.aka || title)}">✕</button>`
+          : '<b>Original</b><small>The photo as published</small>'}</div>`
+          + SCENES.map((sc, j) => `<button class="cmp-cell" data-i="${i}" data-j="${j}" aria-label="${esc((r ? r.aka || title : 'Original') + ', ' + sc.label)}"><canvas></canvas></button>`).join('');
+      }).join('');
+    if (sel.length < 2) grid.insertAdjacentHTML('afterend', '');
+    grid.querySelectorAll('.cmp-col').forEach((b) => (b.onclick = () => openCmpFocus(Number(b.dataset.j))));
+    grid.querySelectorAll('.cmp-cell').forEach((b) => (b.onclick = () => openCmpFocus(Number(b.dataset.j))));
+    grid.querySelectorAll('.cmp-x').forEach((b) => (b.onclick = () => { cmpIds = cmpIds.filter((x) => x !== b.dataset.id); saveCmp(); renderCompare(); }));
+    $('cmpEmpty').hidden = sel.length >= 2;
+    $('cmpCredit').innerHTML = 'Photos via Wikimedia Commons: ' + SCENES.map((sc) => `${esc(sc.label)} by <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a> (${esc(sc.license)})`).join(' · ');
+
+    // paint progressively, scene by scene, so the page stays responsive; a newer render cancels this one
+    const gen = ++cmpGen;
+    (async () => {
+      for (let j = 0; j < SCENES.length; j++) {
+        let src;
+        try { src = await sceneData(SCENES[j], 330); } catch (e) { continue; }
+        for (let i = 0; i < rows.length; i++) {
+          if (gen !== cmpGen) return;
+          await new Promise((r) => setTimeout(r, 0));
+          const cell = grid.querySelector(`.cmp-cell[data-i="${i}"][data-j="${j}"] canvas`);
+          if (cell) paint(cell, cmpRender(rows[i] && rows[i].recipe, SCENES[j], src));
+        }
+      }
+    })();
+  }
+
+  // one scene, large, with the original and each chosen cartridge side by side
+  async function openCmpFocus(j) {
+    cmpFocusIdx = (j + SCENES.length) % SCENES.length;
+    const sc = SCENES[cmpFocusIdx], sel = cmpSelected(), dlg = $('cmpFocus');
+    const tiles = [null, ...sel];
+    $('cmpFocusTitle').textContent = sc.label;
+    $('cmpFocusTests').textContent = sc.tests;
+    $('cmpFocusCredit').innerHTML = `Photo: <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a>, <a href="${sc.licenseUrl}" target="_blank" rel="noopener">${esc(sc.license)}</a>, via Wikimedia Commons`;
+    const big = $('cmpBig');
+    big.style.setProperty('--n', tiles.length);
+    big.innerHTML = tiles.map((r) => `<figure><canvas></canvas><figcaption>${r ? `<b>${esc(r.aka || splitName(r.name)[1])}</b> <span>${esc(FE.SIMS[r.recipe.sim].name)}</span>` : '<b>Original</b>'}</figcaption></figure>`).join('');
+    if (!dlg.open) dlg.showModal();
+    const gen = ++cmpGen;
+    let src;
+    try { src = await sceneData(sc, 960); } catch (e) { $('cmpFocusTests').textContent = "Couldn't load this scene (offline?)."; return; }
+    const cvs = big.querySelectorAll('canvas');
+    for (let i = 0; i < tiles.length; i++) {
+      if (gen !== cmpGen || cmpFocusIdx !== (j + SCENES.length) % SCENES.length) return;
+      await new Promise((r) => setTimeout(r, 0));
+      paint(cvs[i], cmpRender(tiles[i] && tiles[i].recipe, sc, src));
+    }
+  }
+
   // ---------------- rendering ----------------
   let renderQueued = false, lastOut = null;
   function scheduleRender() {
@@ -1524,7 +1651,7 @@
   }
 
   // ---------------- tabs + wiring ----------------
-  const PAGES = { home: 'home', library: 'playlists', cartridges: 'library', editor: 'simulator', calibrate: 'calibrate' };
+  const PAGES = { home: 'home', library: 'playlists', cartridges: 'library', editor: 'simulator', compare: 'compare', calibrate: 'calibrate' };
   const pageFromHash = () => Object.keys(PAGES).find((k) => '#' + PAGES[k] === location.hash);
   window.addEventListener('hashchange', () => { const t = pageFromHash(); if (t) switchTab(t); });
   function switchTab(t) {
@@ -1534,6 +1661,7 @@
     window.scrollTo(0, 0);
     if (t === 'home') renderHome();
     if (t === 'cartridges') renderCartridges();
+    if (t === 'compare') renderCompare();
     if (t === 'library') renderLibrary();
     else if (t !== 'home') stopOrbit();
     if (t === 'lineups') renderLineups();
@@ -1563,6 +1691,14 @@
   $('libSearch').oninput = renderLibrary;
   $('libSort').onchange = renderLibrary;
   $('cartSearch').oninput = renderCartridges;
+  $('cmpPrev').onclick = () => openCmpFocus(cmpFocusIdx - 1);
+  $('cmpNext').onclick = () => openCmpFocus(cmpFocusIdx + 1);
+  $('cmpClose').onclick = () => { cmpGen++; $('cmpFocus').close(); };
+  $('cmpFocus').addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); openCmpFocus(cmpFocusIdx - 1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); openCmpFocus(cmpFocusIdx + 1); }
+  });
+  $('cmpFocus').addEventListener('click', (e) => { if (e.target === $('cmpFocus')) { cmpGen++; $('cmpFocus').close(); } });
   $('cartShow').onchange = renderCartridges;
   $('cartSort').onchange = renderCartridges;
   const setLibMode = (m) => { state.libMode = m; try { localStorage.setItem('filmRecipeLab.libMode', m); } catch (e) { /* ignore */ } renderLibrary(); };
@@ -1626,6 +1762,7 @@
   document.addEventListener('keyup', (e) => { if (e.code === 'Space' && state.showOriginal) { state.showOriginal = false; draw(); } });
   window.addEventListener('calibration-changed', () => {
     thumbCache.clear();
+    cmpOut.clear();
     syncControls(); scheduleRender();
     renderLibrary(); renderLineups();
   });

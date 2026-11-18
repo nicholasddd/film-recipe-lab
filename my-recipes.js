@@ -179,5 +179,37 @@ window.MY_RECIPES = {
         color: 4, sharpness: -2, nr: -4, clarity: -3,
       },
     },
+    {
+      id: 'mine-classic-cuban-neg',
+      aka: 'Classic Cuban Neg',
+      // warm R+4/B-5 shift, big grain and Clarity -4 glow: vivid, gritty, sunny travel
+      scenarios: ['European Summer', 'Beach'],
+      iso: 'Auto, 500 up to 6400',
+      recipe: {
+        sim: 'classicNeg',
+        grain: 2, grainSize: 'large',
+        cce: 2, ccfxb: 2,
+        wb: 'asShot', wbR: 4, wbB: -5,
+        drp: 'off', dr: 400, highlight: -2, shadow: 1,
+        color: 4, sharpness: 0, nr: -4, clarity: -4,
+      },
+    },
+    {
+      id: 'mine-yosemite-velvia',
+      aka: 'Yosemite Velvia',
+      // Velvia warmed by Shade WB with lifted shadows: natural, rich landscapes
+      scenarios: ['Dolomites 2027'],
+      iso: 'Auto up to 3200',
+      ec: '0 to +2/3',
+      notes: 'Grain, Color Chrome, FX Blue and Clarity not specified (likely an older recipe), so they are off.',
+      recipe: {
+        sim: 'velvia',
+        grain: 0,
+        cce: 0, ccfxb: 0,
+        wb: 'shade', wbR: -2, wbB: -2,
+        drp: 'off', dr: 200, highlight: -1, shadow: -2,
+        color: 2, sharpness: -1, nr: -2, clarity: 0,
+      },
+    },
   ],
 };
