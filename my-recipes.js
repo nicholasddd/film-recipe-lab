@@ -1,5 +1,6 @@
 /*
- * Your camera and current repertoire (custom settings C1–C7).
+ * Your camera and your cartridges. Entries with a `slot` are loaded into custom settings C1–C7;
+ * entries without one go to the Library only.
  * These ship with the app, so they appear on every device and on the hosted site.
  * When an entry here changes, the app updates it, unless you've since edited that recipe in the app.
  * Leave out `scenarios` to let the app suggest them.
@@ -49,6 +50,18 @@ window.MY_RECIPES = {
         wb: 'asShot', wbR: 2, wbB: -4,
         drp: 'strong',
         color: 4, sharpness: -2, nr: -4, clarity: 0,
+      },
+    },
+    {
+      id: 'mine-california-hues',
+      aka: 'California Hues',
+      recipe: {
+        sim: 'classicNeg',
+        grain: 2, grainSize: 'large',
+        cce: 2, ccfxb: 1,
+        wb: 'asShot', wbR: 2, wbB: -4,
+        drp: 'off', dr: 400, highlight: -1, shadow: 1.5,
+        color: 4, sharpness: -1, nr: -4, clarity: 0,
       },
     },
   ],
