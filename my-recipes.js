@@ -7,6 +7,8 @@
  */
 window.MY_RECIPES = {
   camera: 'X-T30 II',
+  // your playlists, in order; changing this list replaces the playlists in the app
+  playlists: ['Winter Pilgrimage 2026', 'Rainy Day', 'Beach', 'European Summer', 'Dolomites 2027'],
   repertoire: [
     {
       id: 'mine-c3-shotbygreg',
@@ -26,7 +28,7 @@ window.MY_RECIPES = {
       id: 'mine-c4-seagull-beach',
       slot: 4,
       aka: 'Seagull Beach',
-      scenarios: ['Beach', 'Sunny Day'],
+      scenarios: ['Beach'],
       notes: 'Clarity is sometimes greyed out on the camera.',
       recipe: {
         sim: 'classicNeg',
@@ -41,7 +43,7 @@ window.MY_RECIPES = {
       id: 'mine-c6-snowy-day',
       slot: 6,
       aka: 'Snowy Day',
-      scenarios: ['Snow'],
+      scenarios: [],
       notes: 'Clarity is sometimes greyed out on the camera.',
       recipe: {
         sim: 'classicChrome',
@@ -67,7 +69,7 @@ window.MY_RECIPES = {
     {
       id: 'mine-snowski',
       aka: 'Snowski',
-      scenarios: ['Snow'],
+      scenarios: [],
       notes: 'Grain is to taste (Weak, Small is the starting point).',
       recipe: {
         sim: 'classicNeg',

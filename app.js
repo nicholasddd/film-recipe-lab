@@ -19,7 +19,7 @@
   };
 
   // ---------------- storage ----------------
-  const DEFAULT_SCENARIOS = ['Beach', 'Sunny Day', 'Overcast', 'Rainy Day', 'Mountains', 'Greenery', 'Golden Hour', 'Night / City', 'Snow', 'Portrait', 'Indoor'];
+  const DEFAULT_SCENARIOS = (window.MY_RECIPES && window.MY_RECIPES.playlists) || ['Beach', 'Rainy Day'];
   const STORE_KEY = 'filmRecipeLab.v1';
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const store = load();
@@ -1294,6 +1294,22 @@
     renderHome(); renderLibrary(); renderLineups(); renderQuickLineup(); syncControls();
   }
 
+  // playlists from my-recipes.js: when that list changes, it replaces the playlists here,
+  // and tags for playlists that no longer exist are dropped (cartridges are kept)
+  function syncPlaylists() {
+    const list = window.MY_RECIPES && window.MY_RECIPES.playlists;
+    if (!list) return;
+    const sig = JSON.stringify(list);
+    if (store.playlistsSig === sig) return;
+    store.scenarios = list.slice();
+    store.recipes.forEach((r) => (r.scenarios = r.scenarios.filter((x) => list.includes(x))));
+    store.lineups = {};
+    store.playlistsSig = sig;
+    if (!list.includes(state.libFilter)) state.libFilter = 'All';
+    state.lineupScenario = null;
+    persist();
+  }
+
   // your own recipes from my-recipes.js. Each is added once; when its entry in the file
   // changes it's updated again, unless you've edited that recipe in the app since.
   function seedMine() {
@@ -1306,7 +1322,7 @@
       const seen = store.seeded[m.id];
       if (seen && seen.sig === sig) return;
       const recipe = { ...FE.DEFAULT_RECIPE, ...m.recipe };
-      const scenarios = m.scenarios || RT.suggestScenarios(recipe, store.scenarios);
+      const scenarios = (m.scenarios || RT.suggestScenarios(recipe, store.scenarios)).filter((x) => store.scenarios.includes(x));
       const existing = store.recipes.find((r) => r.id === m.id);
       const others = store.recipes.filter((r) => r.id !== m.id).map((r) => r.name);
       const fields = { name: RT.makeName(recipe, m.aka, scenarios, others), aka: m.aka || '', scenarios, notes: m.notes || '', iso: m.iso || '', ec: m.ec || '', recipe };
@@ -1431,6 +1447,7 @@
   window.addEventListener('drop', (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) loadFile(f); });
 
   persist();
+  syncPlaylists();
   seedMine();
   buildControls();
   buildExposure();
