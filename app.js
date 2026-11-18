@@ -574,7 +574,7 @@
   let activeRings = [], orbitRAF = 0, ringObserver = null;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const angDelta = (a, b) => ((((a - b) % 360) + 540) % 360) - 180;
-  const frontIndex = (ring) => ((Math.round(-ring.theta / ring.step) % ring.n) + ring.n) % ring.n;
+  const frontIndex = (ring) => ((Math.round(((ring.focus || 0) - ring.theta) / ring.step) % ring.n) + ring.n) % ring.n;
 
   function renderOrbit(list) {
     const root = $('libOrbit');
@@ -651,7 +651,7 @@
     };
     stage.onpointerup = stage.onpointercancel = () => {
       if (ring.drag && !ring.moved) ring.vel = 0;
-      else if (Math.abs(ring.vel) < 0.3) { ring.snap = Math.round(ring.theta / ring.step) * ring.step; ring.pauseUntil = performance.now() + 2500; }
+      else if (Math.abs(ring.vel) < 0.3) { const fo = ring.focus || 0; ring.snap = fo + Math.round((ring.theta - fo) / ring.step) * ring.step; ring.pauseUntil = performance.now() + 2500; }
       ring.drag = null;
       stage.classList.remove('dragging');
     };
@@ -659,7 +659,7 @@
     stage.onmouseleave = () => (ring.hover = false);
   }
   // spring to a chosen card, then hold there a moment before cruising again
-  const rotateRingTo = (ring, i) => { ring.snap = ring.theta + angDelta(-i * ring.step, ring.theta); ring.pauseUntil = performance.now() + 4000; };
+  const rotateRingTo = (ring, i) => { ring.snap = ring.theta + angDelta((ring.focus || 0) - i * ring.step, ring.theta); ring.pauseUntil = performance.now() + 4000; };
   // shrink wide rings so the whole carousel fits the window
   let homeRing = null;
   const allRings = () => (homeRing ? [...activeRings, homeRing] : activeRings);
@@ -687,18 +687,25 @@
           ring.theta += ring.vel;
         }
       }
-      if (ring.lean != null) ring.lean += (Math.max(-16, Math.min(16, -(ring.theta - prevTheta) * 2.4)) - ring.lean) * 0.12;
-      ring.el.style.transform = `scale(${ring.k}) translateZ(${-ring.R}px) rotateY(${ring.theta}deg)`;
+      if (ring.lean != null) {
+        const dv = ring.theta - prevTheta;
+        ring.lean += (Math.max(-18, Math.min(18, -dv * 2.6)) - ring.lean) * 0.12;
+        ring.tiltX = (ring.tiltX || 0) + (Math.max(-10, Math.min(10, Math.abs(dv) * 1.6)) - (ring.tiltX || 0)) * 0.1;
+        ring.bank = (ring.bank || 0) + (Math.max(-5, Math.min(5, -dv * 0.9)) - (ring.bank || 0)) * 0.08;
+      }
+      ring.el.style.transform = `scale(${ring.k}) rotateZ(${(ring.bank || 0).toFixed(2)}deg) translateZ(${-(ring.zPush ?? ring.R)}px) rotateY(${ring.theta}deg)`;
       if (ring.reflEl) ring.reflEl.style.transform = `translateY(${ring.cardH * ring.k + 14}px) scale(${ring.k}) scaleY(-1) translateZ(${-ring.R}px) rotateY(${ring.theta}deg)`;
       const fi = frontIndex(ring);
       ring.cards.forEach((c, i) => {
         const f = (Math.cos(((i * ring.step + ring.theta) * Math.PI) / 180) + 1) / 2; // 1 front, 0 back
         const a = ((((i * ring.step + ring.theta) % 360) + 540) % 360) - 180; // degrees away from front
-        c.style.setProperty('--shade', (0.3 + 0.7 * f).toFixed(2));
-        c.style.setProperty('--sheen', (50 - a * 0.6).toFixed(1));
+        c.style.setProperty('--shade', ((ring.shadeMin ?? 0.3) + (1 - (ring.shadeMin ?? 0.3)) * f).toFixed(2));
+        c.style.setProperty('--sheen', (50 - (a - (ring.focus || 0)) * 0.6).toFixed(1));
+        // fan layout: cards right in front of the camera are edge-on and huge, so fade them out
+        if (ring.fadeFront) c.style.setProperty('--op', Math.max(0, Math.min(1, (Math.abs(a) - 16) / 26)).toFixed(2));
         c.classList.toggle('back', f < 0.45); // facing away: hide its (mirrored) text
         if (ring.lean != null) {
-          const t = `rotateY(${i * ring.step}deg) translateZ(${ring.R}px) rotateY(${ring.lean.toFixed(2)}deg)`;
+          const t = `rotateY(${i * ring.step}deg) translateZ(${ring.R}px) rotateY(${((ring.cardTurn || 0) + ring.lean).toFixed(2)}deg) rotateX(${(ring.tiltX || 0).toFixed(2)}deg)`;
           c.style.transform = t;
           if (ring.reflEl && ring.reflEl.children[i]) ring.reflEl.children[i].style.transform = t;
         }
@@ -1027,11 +1034,11 @@
     return el;
   };
   // the loaded cartridges (C1–C7) as a revolving carousel; the front one is described below it
-  const HOME_W = 200, HOME_H = 266, THICK = 8;
-  function renderCartDetail(i) {
-    const ring = homeRing, r = ring.items[i], rp = getRepertoire();
+  const HOME_W = 180, HOME_H = 240, THICK = 8, COPIES = 3;
+  function renderCartDetail(ci) {
+    const ring = homeRing, r = ring.items[ci], rp = getRepertoire(), i = ci % rp.length;
     $('slotNav').querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
-    ring.cards.forEach((c, k) => c.classList.toggle('front', k === i));
+    ring.cards.forEach((c, k) => c.classList.toggle('front', k === ci));
     const el = $('cartDetail');
     if (!r) {
       el.innerHTML = `<div class="cd-head display"><span class="kicker">C${i + 1}</span><h2>Empty slot</h2></div>
@@ -1058,35 +1065,36 @@
   }
   function renderHome() {
     const rp = getRepertoire();
-    const items = rp.map((id) => (id && store.recipes.find((x) => x.id === id)) || null);
-    const n = items.length, step = 360 / n;
-    const R = Math.max(220, (n * (HOME_W + 44)) / (2 * Math.PI));
-    const first = homeRing ? null : Math.max(0, items.findIndex(Boolean));
-    homeRing = Object.assign(homeRing || { theta: -first * step, vel: 0, snap: null }, {
+    const slots = rp.map((id) => (id && store.recipes.find((x) => x.id === id)) || null);
+    const items = Array.from({ length: slots.length * COPIES }, (_, j) => slots[j % slots.length]);
+    const n = items.length, step = 360 / n, R = 300, FOCUS = 46; // the biggest card on the right (46° round the ring) is the one shown below
+    const first = homeRing ? null : Math.max(0, slots.findIndex(Boolean));
+    homeRing = Object.assign(homeRing || { theta: FOCUS - first * step, vel: 0, snap: null }, {
       n, step, R, items, cardW: HOME_W, drag: null, hover: false, fi: -1, visible: true,
-      autoSpeed: 0.32, dragGain: 0.42, lean: (homeRing && homeRing.lean) || 0,
+      autoSpeed: 0.3, dragGain: 0.38, lean: (homeRing && homeRing.lean) || 0,
+      focus: FOCUS, cardTurn: -90, zPush: 40, fadeFront: true, shadeMin: 0.45,
     });
     const ring = homeRing, stage = $('homeStage'), ringEl = $('homeRing');
-    stage.style.height = Math.round(HOME_H * 1.3 + R * 0.42 + 30 + HOME_H * 0.5) + 'px';
+    stage.style.height = Math.round(HOME_H * 1.75) + 'px';
     ring.el = ringEl;
     ring.stage = stage;
     ringEl.innerHTML = '';
     ring.cards = items.map((r, i) => {
       const c = document.createElement('div');
       c.className = 'ocard hcard display' + (r ? '' : ' empty');
-      c.style.transform = `rotateY(${i * step}deg) translateZ(${R}px)`;
+      c.style.transform = `rotateY(${i * step}deg) translateZ(${R}px) rotateY(-90deg)`;
       // thickness: thin layers stacked behind the face read as a solid chrome edge when turned
       for (let z = 1; z <= THICK; z++) c.insertAdjacentHTML('beforeend', `<div class="hc-edge" style="transform:translateZ(${-z}px)"></div>`);
-      c.insertAdjacentHTML('beforeend', `<div class="hc-back" style="transform:translateZ(${-THICK - 1}px) rotateY(180deg)"><span>C${i + 1}</span></div>`);
+      c.insertAdjacentHTML('beforeend', `<div class="hc-back" style="transform:translateZ(${-THICK - 1}px) rotateY(180deg)"><span>C${(i % slots.length) + 1}</span></div>`);
       const face = document.createElement('div');
       face.className = 'hc-face';
       if (r) {
         face.appendChild(thumbCanvas(r.recipe));
         const [code, title] = splitName(r.name);
-        face.insertAdjacentHTML('beforeend', `<span class="hc-slot">C${i + 1}</span>
+        face.insertAdjacentHTML('beforeend', `<span class="hc-slot">C${(i % slots.length) + 1}</span>
           <div class="hc-bottom"><b>${esc(r.aka || title)}</b><small>${esc(code || sim3(r))} · ${esc(FE.SIMS[r.recipe.sim].name)}</small></div>`);
       } else {
-        face.innerHTML = `<span class="hc-slot">C${i + 1}</span><div class="hc-empty">Empty slot<br><small>Add a cartridge</small></div>`;
+        face.innerHTML = `<span class="hc-slot">C${(i % slots.length) + 1}</span><div class="hc-empty">Empty slot<br><small>Add a cartridge</small></div>`;
       }
       face.insertAdjacentHTML('beforeend', '<div class="hc-sheen"></div>');
       c.appendChild(face);
@@ -1094,30 +1102,25 @@
         if (ring.moved) return;
         if (frontIndex(ring) !== i) rotateRingTo(ring, i);
         else if (r) loadRecipe(r);
-        else openForm({ slot: i + 1 });
+        else openForm({ slot: (i % slots.length) + 1 });
       };
       ringEl.appendChild(c);
       return c;
     });
     // floor reflection: a faint mirrored copy of the ring, faded out by an overlay
-    const refl = $('homeRefl');
-    refl.innerHTML = '';
-    items.forEach((r, i) => {
-      const d = document.createElement('div');
-      d.className = 'hcard-refl' + (r ? '' : ' empty');
-      d.style.transform = `rotateY(${i * step}deg) translateZ(${R}px)`;
-      if (r) d.appendChild(thumbCanvas(r.recipe));
-      refl.appendChild(d);
-    });
-    ring.reflEl = refl;
-    ring.cardH = HOME_H;
+    $('homeRefl').innerHTML = '';
+    ring.reflEl = null;
     attachRingDrag(stage, ring);
     ring.onFront = renderCartDetail;
-    $('slotNav').innerHTML = items.map((r, i) => `<button class="slot-chip${r ? '' : ' none'}" data-i="${i}" aria-label="Show C${i + 1}">C${i + 1}</button>`).join('');
-    $('slotNav').querySelectorAll('button').forEach((b) => (b.onclick = () => rotateRingTo(ring, Number(b.dataset.i))));
+    $('slotNav').innerHTML = slots.map((r, i) => `<button class="slot-chip${r ? '' : ' none'}" data-i="${i}" aria-label="Show C${i + 1}">C${i + 1}</button>`).join('');
+    $('slotNav').querySelectorAll('button').forEach((b) => (b.onclick = () => {
+      const sl = Number(b.dataset.i);
+      let best = sl, bd = Infinity;
+      for (let k = 0; k < COPIES; k++) { const j = sl + k * slots.length, d = Math.abs(angDelta(FOCUS - j * step, ring.theta)); if (d < bd) { bd = d; best = j; } }
+      rotateRingTo(ring, best);
+    }));
     fitRings();
-    const ringY = stage.clientHeight * 0.4;
-    $('homeFade').style.top = Math.round(ringY + (HOME_H / 2) * ring.k + 4) + 'px';
+    $('homeFade').hidden = true;
     if (!orbitRAF) orbitRAF = requestAnimationFrame(orbitTick);
     $('repCount').textContent = `${rp.filter(Boolean).length} of ${REP_SLOTS} cartridges loaded · ${CAM_NAME}`;
 
