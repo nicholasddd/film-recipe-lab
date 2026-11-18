@@ -362,8 +362,9 @@
       setOrig({ aperture: 8, shutter: 1 / 250, iso: 200 });
       state.scene = sc;
       setFullImage(c);
-      $('badge').textContent += ` · ${sc.label}`;
+      $('badge').textContent += ` · ${sc.title}`;
       renderScenes();
+      renderQuickLineup();
     };
     img.onerror = () => { $('sceneCredit').textContent = `Couldn't load "${sc.label}" (offline?). Showing the test chart.`; };
     img.src = sc.src;
@@ -371,18 +372,18 @@
   function renderScenes() {
     const el = $('scenes');
     if (!el) return;
-    el.innerHTML = SCENES.map((sc) => `<button class="scene${state.scene === sc ? ' on' : ''}" data-k="${sc.key}" title="${esc(sc.tests)}">
-      <img src="${sc.src.replace('/1280px-', '/330px-')}" alt="" loading="lazy" crossorigin="anonymous"><span>${esc(sc.label)}</span></button>`).join('')
-      + `<button class="scene chart${state.scene ? '' : ' on'}" data-k="chart"><span>Test chart</span></button>`;
+    const cats = window.SCENE_CATS || [];
+    el.innerHTML = cats.map((c) => `<div class="scene-group"><span>${esc(c.label)}</span><div class="sg-items">${SCENES.filter((sc) => sc.cat === c.key).map((sc) =>
+      `<button class="scene${state.scene === sc ? ' on' : ''}" data-k="${sc.key}" title="${esc(sc.title)}: ${esc(sc.tests)}" aria-label="${esc(c.label)}: ${esc(sc.title)}">
+        <img src="${sc.src.replace('/1280px-', '/330px-')}" alt="" loading="lazy" crossorigin="anonymous"><span>${esc(sc.title)}</span></button>`).join('')}</div></div>`).join('');
     el.querySelectorAll('.scene').forEach((b) => (b.onclick = () => {
-      if (b.dataset.k === 'chart') { state.scene = null; makeTestChart(); renderScenes(); return; }
       loadScene(SCENES.find((x) => x.key === b.dataset.k));
     }));
     const sc = state.scene;
     // cartridge faces elsewhere show the same photo, so credit it there too
     const fc = $('faceCredit');
-    if (fc) fc.innerHTML = sc ? `Cartridge faces: ${esc(sc.label)} · Photo <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a>, <a href="${sc.licenseUrl}" target="_blank" rel="noopener">${esc(sc.license)}</a>, via Wikimedia Commons, shown with each recipe applied` : '';
-    $('sceneCredit').innerHTML = sc ? `<b>${esc(sc.label)}</b>: ${esc(sc.tests)} · Photo: <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a>, <a href="${sc.licenseUrl}" target="_blank" rel="noopener">${esc(sc.license)}</a>, via Wikimedia Commons (shown with the recipe applied)` : '';
+    if (fc) fc.innerHTML = sc ? `Cartridge faces: ${esc(sc.title)} · Photo <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a>, <a href="${sc.licenseUrl}" target="_blank" rel="noopener">${esc(sc.license)}</a>, via Wikimedia Commons, shown with each recipe applied` : '';
+    $('sceneCredit').innerHTML = sc ? `<b>${esc(sc.label)}</b> · ${esc(sc.title)}: ${esc(sc.tests)} · Photo: <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a>, <a href="${sc.licenseUrl}" target="_blank" rel="noopener">${esc(sc.license)}</a>, via Wikimedia Commons (shown with the recipe applied)` : '';
   }
 
   // ---------------- compare: 2–4 cartridges across the sample scenes ----------------
@@ -435,8 +436,14 @@
   }
   function saveCmp() { try { localStorage.setItem(CMP_KEY, JSON.stringify(cmpIds)); } catch (e) { /* ignore */ } }
 
+  let cmpVariant = 1;
+  const cmpColumns = () => (window.SCENE_CATS || []).map((c) => {
+    const list = SCENES.filter((sc) => sc.cat === c.key);
+    return list[Math.min(cmpVariant, list.length) - 1];
+  }).filter(Boolean);
   function renderCompare() {
-    const sel = cmpSelected(), rp = getRepertoire();
+    const sel = cmpSelected(), rp = getRepertoire(), cols = cmpColumns();
+    $('cmpVariant').querySelectorAll('button').forEach((b) => { b.classList.toggle('on', Number(b.dataset.v) === cmpVariant); b.onclick = () => { cmpVariant = Number(b.dataset.v); renderCompare(); }; });
     // picker: cartridges in the camera first, then the rest of the library
     const ordered = [...store.recipes].sort((a, b) => ((rp.indexOf(a.id) + 1 || 99) - (rp.indexOf(b.id) + 1 || 99)) || (a.aka || a.name).localeCompare(b.aka || b.name));
     $('cmpCarts').innerHTML = ordered.map((r) => {
@@ -456,34 +463,33 @@
 
     const grid = $('cmpGrid');
     const rows = [null, ...sel];
-    grid.style.setProperty('--cols', SCENES.length);
-    grid.innerHTML = '<div class="cmp-corner"></div>' + SCENES.map((sc, j) =>
-      `<button class="cmp-col" data-j="${j}" title="${esc(sc.tests)}"><b>${esc(sc.label)}</b><small>${esc(sc.tests)}</small></button>`).join('')
+    grid.style.setProperty('--cols', cols.length);
+    grid.innerHTML = '<div class="cmp-corner"></div>' + cols.map((sc, j) =>
+      `<button class="cmp-col" data-j="${j}" title="${esc(sc.title)}"><b>${esc(sc.label)}</b><small>${esc(sc.tests)}</small></button>`).join('')
       + rows.map((r, i) => {
         const [code, title] = r ? splitName(r.name) : ['', ''];
         return `<div class="cmp-row${r ? '' : ' original'}">${r
           ? `<b>${esc(r.aka || title)}</b><small>${code ? esc(code) + ' · ' : ''}${esc(FE.SIMS[r.recipe.sim].name)}</small><button class="cmp-x" data-id="${r.id}" aria-label="Remove ${esc(r.aka || title)}">✕</button>`
           : '<b>Original</b><small>The photo as published</small>'}</div>`
-          + SCENES.map((sc, j) => `<button class="cmp-cell" data-i="${i}" data-j="${j}" aria-label="${esc((r ? r.aka || title : 'Original') + ', ' + sc.label)}"><canvas></canvas></button>`).join('');
+          + cols.map((sc, j) => `<button class="cmp-cell" data-i="${i}" data-j="${j}" aria-label="${esc((r ? r.aka || title : 'Original') + ', ' + sc.label)}"><canvas></canvas></button>`).join('');
       }).join('');
     if (sel.length < 2) grid.insertAdjacentHTML('afterend', '');
-    grid.querySelectorAll('.cmp-col').forEach((b) => (b.onclick = () => openCmpFocus(Number(b.dataset.j))));
-    grid.querySelectorAll('.cmp-cell').forEach((b) => (b.onclick = () => openCmpFocus(Number(b.dataset.j))));
+    grid.querySelectorAll('.cmp-col, .cmp-cell').forEach((b) => (b.onclick = () => openCmpFocus(SCENES.indexOf(cols[Number(b.dataset.j)]))));
     grid.querySelectorAll('.cmp-x').forEach((b) => (b.onclick = () => { cmpIds = cmpIds.filter((x) => x !== b.dataset.id); saveCmp(); renderCompare(); }));
     $('cmpEmpty').hidden = sel.length >= 2;
-    $('cmpCredit').innerHTML = 'Photos via Wikimedia Commons: ' + SCENES.map((sc) => `${esc(sc.label)} by <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a> (${esc(sc.license)})`).join(' · ');
+    $('cmpCredit').innerHTML = 'Photos via Wikimedia Commons: ' + cols.map((sc) => `${esc(sc.label)} by <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a> (${esc(sc.license)})`).join(' · ');
 
     // paint progressively, scene by scene, so the page stays responsive; a newer render cancels this one
     const gen = ++cmpGen;
     (async () => {
-      for (let j = 0; j < SCENES.length; j++) {
+      for (let j = 0; j < cols.length; j++) {
         let src;
-        try { src = await sceneData(SCENES[j], 330); } catch (e) { continue; }
+        try { src = await sceneData(cols[j], 330); } catch (e) { continue; }
         for (let i = 0; i < rows.length; i++) {
           if (gen !== cmpGen) return;
           await new Promise((r) => setTimeout(r, 0));
           const cell = grid.querySelector(`.cmp-cell[data-i="${i}"][data-j="${j}"] canvas`);
-          if (cell) paint(cell, cmpRender(rows[i] && rows[i].recipe, SCENES[j], src));
+          if (cell) paint(cell, cmpRender(rows[i] && rows[i].recipe, cols[j], src));
         }
       }
     })();
@@ -494,8 +500,9 @@
     cmpFocusIdx = (j + SCENES.length) % SCENES.length;
     const sc = SCENES[cmpFocusIdx], sel = cmpSelected(), dlg = $('cmpFocus');
     const tiles = [null, ...sel];
-    $('cmpFocusTitle').textContent = sc.label;
-    $('cmpFocusTests').textContent = sc.tests;
+    const inCat = SCENES.filter((x) => x.cat === sc.cat);
+    $('cmpFocusTitle').textContent = `${sc.label} · ${inCat.indexOf(sc) + 1} of ${inCat.length}`;
+    $('cmpFocusTests').textContent = `${sc.title} · ${sc.tests}`;
     $('cmpFocusCredit').innerHTML = `Photo: <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a>, <a href="${sc.licenseUrl}" target="_blank" rel="noopener">${esc(sc.license)}</a>, via Wikimedia Commons`;
     const big = $('cmpBig');
     big.style.setProperty('--n', tiles.length);
@@ -559,7 +566,8 @@
   function loadRecipe(entry) {
     state.recipe = { ...FE.DEFAULT_RECIPE, ...entry.recipe };
     state.loadedId = entry.id;
-    switchTab('editor');
+    if (!$('editor').classList.contains('active')) switchTab('editor');
+    $('quickLineup').querySelectorAll('.sim-cart').forEach((b, k) => { const on = b.querySelector('b').textContent === (entry.aka || splitName(entry.name)[1]); b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
     onRecipeChange();
     readNext();
   }
@@ -1066,25 +1074,44 @@
   }
 
   // quick lineup strip in the editor: flick through a scenario's 8 recipes on the current photo
+  // simulator cartridge list: every cartridge (or a filter), one click applies it
+  let simListGen = 0;
   function renderQuickLineup() {
-    const el = $('quickLineup');
-    if (!state.lineupScenario) state.lineupScenario = store.scenarios[0];
-    el.innerHTML = '';
-    const sel = document.createElement('select');
-    store.scenarios.forEach((s) => sel.add(new Option(s + ' playlist', s)));
-    sel.value = state.lineupScenario;
-    sel.onchange = () => { state.lineupScenario = sel.value; renderQuickLineup(); renderLineups(); };
-    el.appendChild(sel);
-    const inList = store.recipes.filter((r) => r.scenarios.includes(state.lineupScenario));
-    if (!inList.length) el.insertAdjacentHTML('beforeend', '<span class="hint">No cartridges in this playlist yet.</span>');
-    inList.forEach((r, i) => {
+    const el = $('quickLineup'), sel = $('simFilter');
+    if (!el || !sel) return;
+    const rp = getRepertoire();
+    const f = state.simFilter || 'all';
+    sel.innerHTML = `<option value="all">All cartridges</option><option value="camera">In camera</option>` + store.scenarios.map((s) => `<option value="pl:${esc(s)}">${esc(s)}</option>`).join('');
+    sel.value = f;
+    sel.onchange = () => { state.simFilter = sel.value; renderQuickLineup(); };
+    let list = store.recipes.slice();
+    if (f === 'camera') list = list.filter((r) => rp.includes(r.id));
+    else if (f.startsWith('pl:')) list = list.filter((r) => r.scenarios.includes(f.slice(3)));
+    list.sort((a, b) => ((rp.indexOf(a.id) + 1 || 99) - (rp.indexOf(b.id) + 1 || 99)) || (a.aka || a.name).localeCompare(b.aka || b.name));
+    el.innerHTML = list.length ? '' : '<div class="hint">No cartridges here yet.</div>';
+    const cvs = [];
+    list.forEach((r) => {
+      const slot = rp.indexOf(r.id), [code, title] = splitName(r.name);
       const b = document.createElement('button');
-      b.className = 'btn slot' + (r.id === state.loadedId ? ' on' : '');
-      b.innerHTML = `<b>${String(i + 1).padStart(2, '0')}</b>${esc(r.aka || r.name)}`;
-      b.title = r.name;
-      b.onclick = () => { loadRecipe(r); renderQuickLineup(); };
+      b.className = 'sim-cart' + (r.id === state.loadedId ? ' on' : '');
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', r.id === state.loadedId);
+      b.innerHTML = `<canvas width="1" height="1"></canvas><div><b>${esc(r.aka || title)}</b><small>${code ? esc(code) + ' · ' : ''}${esc(FE.SIMS[r.recipe.sim].name)}</small></div>${slot >= 0 ? `<span class="slot">C${slot + 1}</span>` : ''}`;
+      b.onclick = () => loadRecipe(r);
       el.appendChild(b);
+      cvs.push([b.querySelector('canvas'), r]);
     });
+    // previews render a few at a time so switching photos stays smooth
+    const gen = ++simListGen;
+    (async () => {
+      for (const [cv, r] of cvs) {
+        if (gen !== simListGen) return;
+        await new Promise((res) => setTimeout(res, 0));
+        const t = thumbCanvas(r.recipe);
+        cv.width = t.width; cv.height = t.height;
+        cv.getContext('2d').drawImage(t, 0, 0);
+      }
+    })();
   }
 
   // ---------------- paste import ----------------
