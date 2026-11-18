@@ -695,6 +695,10 @@
           ring.pvel = (ring.pvel || 0) * 0.9;
           if (Math.abs(ring.vel) < 0.01) ring.vel = 0;
           if (Math.abs(ring.pvel) < 0.01) ring.pvel = 0;
+          if (ring.settle && Math.abs(ring.vel) < 0.15) {
+            const fo = ring.focus || 0, target = fo + Math.round((ring.theta - fo) / ring.step) * ring.step;
+            if (Math.abs(target - ring.theta) > 0.05) { ring.vel = 0; ring.snap = target; }
+          }
         } else {
           // a fling coasts and eases back to cruising speed; hovering or a recent pick holds it still
           const held = ring.hover || reduceMotion || performance.now() < (ring.pauseUntil || 0);
@@ -720,6 +724,15 @@
         c.style.setProperty('--sheen', (50 - (a - (ring.focus || 0)) * 0.6).toFixed(1));
         // fan layout: cards right in front of the camera are edge-on and huge, so fade them out
         if (ring.fadeFront) c.style.setProperty('--op', Math.max(0, Math.min(1, (Math.abs(a) - 16) / 26)).toFixed(2));
+        if (ring.faceFront) {
+          const t = Math.max(0, 1 - Math.abs(a) / (ring.step * 1.1)), e = t * t * (3 - 2 * t); // 1 at the centre, 0 one card away
+          const turn = ring.cardTurn * (1 - e) - a * e;
+          c.style.transform = `rotateY(${i * ring.step}deg) translateZ(${(ring.R + 60 * e).toFixed(1)}px) rotateY(${turn.toFixed(2)}deg)`;
+          // chrome highlight: brightest when the card's face (or back) points between the key light and the camera
+          const yaw = ((((a + turn) % 360) + 540) % 360) - 180, rad = (d) => (d * Math.PI) / 180;
+          const spec = Math.pow(Math.max(0, Math.cos(rad(yaw - KEY_LIGHT))), 6) + Math.pow(Math.max(0, Math.cos(rad(yaw - 180 - KEY_LIGHT))), 6) * 0.6;
+          c.style.setProperty('--spec', spec.toFixed(3));
+        }
         c.classList.toggle('back', f < 0.45); // facing away: hide its (mirrored) text
         if (ring.lean != null) {
           const t = `rotateY(${i * ring.step}deg) translateZ(${ring.R}px) rotateY(${((ring.cardTurn || 0) + ring.lean).toFixed(2)}deg) rotateX(${(ring.tiltX || 0).toFixed(2)}deg)`;
@@ -754,11 +767,21 @@
     if (state.loadedId === r.id) state.loadedId = null;
     persist(); syncControls(); renderLibrary(); renderLineups(); renderQuickLineup();
   }
+  // in-page dialog: some embedded browsers block window.prompt
   function addScenario() {
-    const name = (prompt('New playlist name (e.g. Desert, Autumn, Street):') || '').trim();
-    if (!name || store.scenarios.includes(name)) return;
+    $('plName').value = '';
+    $('plMsg').textContent = '';
+    $('plDlg').showModal();
+    $('plName').focus();
+  }
+  function commitPlaylist() {
+    const name = $('plName').value.trim();
+    if (!name) { $('plName').focus(); return; }
+    if (store.scenarios.some((x) => x.toLowerCase() === name.toLowerCase())) { $('plMsg').textContent = `"${name}" already exists.`; return; }
     store.scenarios.push(name);
-    persist(); renderLibrary(); renderLineups(); renderQuickLineup();
+    persist();
+    $('plDlg').close();
+    renderLibrary(); renderLineups(); renderQuickLineup();
   }
   function removeScenario(s) {
     if (!confirm(`Remove the "${s}" playlist? Its cartridges stay in your Library.`)) return;
@@ -1051,7 +1074,8 @@
     return el;
   };
   // the loaded cartridges (C1–C7) as a revolving carousel; the front one is described below it
-  const HOME_W = 180, HOME_H = 240, THICK = 8, COPIES = 3;
+  const KEY_LIGHT = -24; // yaw (degrees) between the studio key light and the camera
+  const HOME_W = 180, HOME_H = 240, THICK = 8, COPIES = 2;
   function renderCartDetail(ci) {
     const ring = homeRing, r = ring.items[ci], rp = getRepertoire(), i = ci % rp.length;
     $('slotNav').querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
@@ -1084,12 +1108,12 @@
     const rp = getRepertoire();
     const slots = rp.map((id) => (id && store.recipes.find((x) => x.id === id)) || null);
     const items = Array.from({ length: slots.length * COPIES }, (_, j) => slots[j % slots.length]);
-    const n = items.length, step = 360 / n, R = 300, FOCUS = 46; // the biggest card on the right (46° round the ring) is the one shown below
+    const n = items.length, step = 360 / n, R = 340, FOCUS = 0; // the card at the front centre is the one shown below
     const first = homeRing ? null : Math.max(0, slots.findIndex(Boolean));
     homeRing = Object.assign(homeRing || { theta: FOCUS - first * step, vel: 0, snap: null }, {
       n, step, R, items, cardW: HOME_W, drag: null, hover: false, fi: -1, visible: true,
       orbit: true, pitch: homeRing ? homeRing.pitch : -6, pvel: 0, dragGain: 0.32, lean: null,
-      focus: FOCUS, cardTurn: -90, zPush: 420, fadeFront: true, shadeMin: 0.45, // zPush: camera distance from the ring centre
+      focus: FOCUS, cardTurn: -90, zPush: 420, faceFront: true, settle: true, shadeMin: 0.45, // zPush: camera distance from the ring centre
     });
     const ring = homeRing, stage = $('homeStage'), ringEl = $('homeRing');
     stage.style.height = Math.round(HOME_H * 1.65) + 'px';
@@ -1343,6 +1367,9 @@
   $('modeGrid').onclick = () => setLibMode('grid');
   $('modeOrbit').onclick = () => setLibMode('orbit');
   $('btnAddScenario').onclick = addScenario;
+  $('plOk').onclick = commitPlaylist;
+  $('plCancel').onclick = () => $('plDlg').close();
+  $('plName').onkeydown = (e) => { if (e.key === 'Enter') commitPlaylist(); };
   $('btnPaste').onclick = () => { $('pasteDlg').showModal(); $('pasteText').focus(); };
   $('homePaste').onclick = () => { $('pasteRep').checked = true; $('pasteDlg').showModal(); $('pasteText').focus(); };
   $('homeSim').onclick = () => switchTab('editor');

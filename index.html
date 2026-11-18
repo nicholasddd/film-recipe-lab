@@ -15,7 +15,8 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-size: 13px; }
-  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 50; background: rgba(17, 15, 13, .82); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
   header h1 { font-size: 15px; margin: 0; letter-spacing: .04em; }
   header h1 span { color: var(--accent); }
   nav { display: flex; gap: 4px; }
@@ -158,8 +159,15 @@
   .hc-face { overflow: hidden; transform: translateZ(1px); background: #111; box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), inset 0 1px 0 rgba(255,255,255,.5); }
   .hc-face::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35), transparent 30%, transparent 55%, rgba(0,0,0,.7)); pointer-events: none; }
   /* hollow chrome rim: stacked outlines read as a solid edge, but you can still see through the glass from behind */
-  .hc-edge { background: none; border: 1.5px solid #c9ced3; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.35); }
-  .hc-edge:nth-child(even) { border-color: #8b9198; }
+  .hc-edge { background: none; border: 1.5px solid #d6dade; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.35);
+    filter: brightness(calc(var(--shade, 1) * (0.5 + var(--spec, 0) * 2.4))); }
+  .hc-edge:nth-child(even) { border-color: #9aa0a7; }
+  .hc-sheen { opacity: calc(.35 + var(--spec, 0) * 1.1); }
+  .hcard .hc-face { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, calc(.18 + var(--spec, 0) * .5)), inset 0 1px 0 rgba(255,255,255,.5); }
+  /* studio lighting around the carousel: a soft key from above and a warm floor glow */
+  .home-ring .ring-stage { background:
+    radial-gradient(ellipse 42% 30% at 46% 6%, rgba(255, 255, 255, .085), transparent 70%),
+    radial-gradient(ellipse 55% 16% at 50% 90%, rgba(255, 106, 31, .07), transparent 70%); }
   .hc-face { backface-visibility: visible; }
   .hc-back { display: none !important; backface-visibility: hidden; background: linear-gradient(135deg, #4a5057 0%, #17191c 42%, #5a6168 58%, #1d2024 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); display: grid; place-items: center; }
   .hc-back span { position: static; background: none; color: rgba(255,255,255,.25); font-size: 34px; font-weight: 500; letter-spacing: -.04em; padding: 0; }
@@ -202,8 +210,12 @@
   .hero-cam { margin: 0; flex: 0 1 460px; max-width: 40%; min-width: 0; position: relative; }
   .hero-text { flex: 1 1 auto; }
   .hero-cam-row h1 { font-size: clamp(46px, 7.4vw, 132px); }
-  .hero-cam img { display: block; width: 100%; height: auto; -webkit-mask-image: radial-gradient(ellipse 62% 66% at 52% 52%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 62% 66% at 52% 52%, #000 55%, transparent 100%); }
-  .hero-cam figcaption { display: flex; justify-content: space-between; gap: 10px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: -14px; padding: 0 18px; }
+  .cam3d { width: 100%; aspect-ratio: 4 / 3; cursor: grab; touch-action: none; position: relative;
+    background: radial-gradient(ellipse 60% 55% at 50% 55%, rgba(255, 106, 31, .08), transparent 70%); }
+  .cam3d.dragging { cursor: grabbing; }
+  .cam3d canvas { width: 100% !important; height: 100% !important; display: block; }
+  .cam3d.no-webgl { display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+  .hero-cam figcaption { display: flex; justify-content: space-between; gap: 10px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 2px; padding: 0 18px; }
   .hero-cam .credit { text-transform: none; letter-spacing: 0; opacity: .75; }
   .hero-cam a { color: inherit; }
   @media (max-width: 760px) { .hero-cam-row { flex-wrap: wrap; } .hero-cam { flex-basis: 100%; max-width: 100%; } }
@@ -320,11 +332,8 @@
       <div class="hero-btns"><button class="btn primary" id="homeAdd">Add cartridge</button> <button class="btn" id="homePaste">Paste text</button> <button class="btn" id="homeSim">Open simulator</button></div>
     </div>
     <figure class="hero-cam">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Fujifilm_X-T30_II.jpg/960px-Fujifilm_X-T30_II.jpg"
-           alt="Fujifilm X-T30 II with an 18–55mm lens on a dark reflective surface" width="960" height="640" loading="eager">
-      <figcaption><span>Fujifilm X-T30 II</span>
-        <span class="credit">Photo: <a href="https://commons.wikimedia.org/wiki/File:Fujifilm_X-T30_II.jpg" target="_blank" rel="noopener">Henry Söderlund</a>,
-        <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noopener">CC BY 2.0</a></span></figcaption>
+      <div id="cam3d" class="cam3d" role="img" aria-label="3D model of a Fujifilm X-T30 II with a zoom lens. Drag to rotate."></div>
+      <figcaption><span>Fujifilm X-T30 II</span><span class="credit">Drag to rotate</span></figcaption>
     </figure>
   </div>
   <div class="home-ring">
@@ -519,6 +528,13 @@
   <div class="foot"><button class="btn" id="formCancel">Cancel</button><button class="btn primary" id="formSave">Save recipe</button></div>
 </dialog>
 
+<dialog id="plDlg">
+  <h2>New playlist</h2>
+  <div class="field"><span>Name</span><input type="text" id="plName" placeholder="e.g. Desert, Autumn, Street"></div>
+  <div class="hint warn" id="plMsg"></div>
+  <div class="foot"><button class="btn" id="plCancel">Cancel</button><button class="btn primary" id="plOk">Create playlist</button></div>
+</dialog>
+
 <dialog id="pickDlg">
   <h2 id="pickTitle">Choose recipe</h2>
   <div class="chips" style="margin-bottom:10px"><button class="chip on" id="pickOnlyScn">This scenario</button><button class="chip" id="pickAll">All recipes</button></div>
@@ -531,5 +547,7 @@
 <script src="recipe-tools.js"></script>
 <script src="app.js"></script>
 <script src="calibrate.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="camera3d.js"></script>
 </body>
 </html>

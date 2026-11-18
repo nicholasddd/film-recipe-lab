@@ -78,5 +78,30 @@ window.MY_RECIPES = {
         color: 4, sharpness: -2, nr: -4, clarity: 0,
       },
     },
+    {
+      id: 'mine-portra-dol-sol',
+      aka: 'Portra Dol Sol',
+      recipe: {
+        sim: 'classicChrome',
+        grain: 0,
+        cce: 2, ccfxb: 0,
+        wb: 'asShot', wbR: 2, wbB: -6,
+        drp: 'off', dr: 400, highlight: -2, shadow: -2,
+        color: 3, sharpness: -2, nr: -4, clarity: 0,
+      },
+    },
+    {
+      id: 'mine-nostalgic-haze',
+      aka: 'Nostalgic Haze',
+      notes: 'Uses Nostalgic Neg., which the X-T30 II does not have: simulator only.',
+      recipe: {
+        sim: 'nostalgicNeg',
+        grain: 1, grainSize: 'small',
+        cce: 2, ccfxb: 1,
+        wb: 'autoWhite', wbR: 2, wbB: -4,
+        drp: 'off', dr: 400, highlight: -1.5, shadow: -1,
+        color: 3, sharpness: 1, nr: -4, clarity: 0,
+      },
+    },
   ],
 };
