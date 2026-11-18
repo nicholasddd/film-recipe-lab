@@ -225,24 +225,32 @@
 
   // ---------------- naming ----------------
   const NOISE_WORDS = /\b(fuji(film)?|x[- ]?(trans|t\d+|e\d+|s\d+|pro\d*|100\w*)|recipe|film\s*simulation|simulation|settings?|v\d|version)\b/gi;
-  function descriptorFrom(aka, scenarios) {
+  // the descriptor keeps whole words that fit in maxChars (a single long word is cut)
+  function descriptorFrom(aka, scenarios, maxChars = 16) {
     let d = (aka || '').replace(NOISE_WORDS, ' ').replace(/[^\w\s'&.+-]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!d && scenarios && scenarios[0]) d = scenarios[0].split(' / ')[0];
     if (!d) d = 'Untitled';
     const words = d.split(' ');
     let out = '';
-    for (const w of words) { if ((out + ' ' + w).trim().length > 16) break; out = (out + ' ' + w).trim(); }
-    return out || words[0].slice(0, 16);
+    for (const w of words) { if ((out + ' ' + w).trim().length > maxChars) break; out = (out + ' ' + w).trim(); }
+    return out || words[0].slice(0, maxChars);
   }
   function codeFor(recipe) {
     const a = analyze(recipe);
     return `${SIM_CODES[recipe.sim]}-${a.temp}${a.tone}`;
   }
-  function makeName(recipe, aka, scenarios, existing) {
-    const base = `${codeFor(recipe)} ${descriptorFrom(aka, scenarios)}`;
-    let name = base, i = 2;
+  // names must fit the camera's custom-setting name field (see CAMERAS[...].nameMax)
+  let NAME_MAX = 25;
+  const setNameMax = (n) => { if (n > 8) NAME_MAX = n; };
+  function makeName(recipe, aka, scenarios, existing, maxLen = NAME_MAX) {
+    const code = codeFor(recipe);
     const taken = new Set((existing || []).map((n) => n.toLowerCase()));
-    while (taken.has(name.toLowerCase())) name = `${base} ${i++}`;
+    const build = (suffix) => {
+      const room = maxLen - code.length - 1 - (suffix ? suffix.length + 1 : 0);
+      return `${code} ${descriptorFrom(aka, scenarios, room)}${suffix ? ' ' + suffix : ''}`;
+    };
+    let name = build(''), i = 2;
+    while (taken.has(name.toLowerCase())) name = build(String(i++));
     return name;
   }
 
@@ -288,9 +296,10 @@
   const CAMERAS = {
     'X-T30 II': {
       slots: 7,
+      nameMax: 25, // EDIT CUSTOM NAME length: not confirmed in Fujifilm's docs; check on the camera and adjust
       sims: ['provia', 'velvia', 'astia', 'classicChrome', 'proNegHi', 'proNegStd', 'classicNeg', 'eterna', 'bleachBypass', 'acros', 'monochrome', 'sepia'],
     },
   };
 
-  global.RecipeTools = { CAMERAS, SIM_CODES, parse, analyze, scoreScenarios, suggestScenarios, makeName, codeFor, descriptorFrom, buildLineups, RULES };
+  global.RecipeTools = { setNameMax, CAMERAS, SIM_CODES, parse, analyze, scoreScenarios, suggestScenarios, makeName, codeFor, descriptorFrom, buildLineups, RULES };
 })(window);

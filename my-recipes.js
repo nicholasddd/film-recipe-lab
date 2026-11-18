@@ -105,5 +105,32 @@ window.MY_RECIPES = {
         color: 3, sharpness: 1, nr: -4, clarity: 0,
       },
     },
+    {
+      id: 'mine-crimson-shift',
+      aka: 'Crimson Shift',
+      ec: '-1/3',
+      notes: 'Strong reds and oranges with little yellow: warmth comes from Red +3, Blue only -2. Shoot 0 to -1/3 so oranges stay saturated.',
+      recipe: {
+        sim: 'classicNeg',
+        grain: 1, grainSize: 'small',
+        cce: 2, ccfxb: 1,
+        wb: 'daylight', wbR: 3, wbB: -2,
+        drp: 'off', dr: 400, highlight: -1.5, shadow: 0.5,
+        color: 3, sharpness: -1, nr: -4, clarity: 0,
+      },
+    },
+    {
+      id: 'mine-plain-vanilla-indoor',
+      aka: 'Plain Vanilla Indoor',
+      scenarios: [],
+      recipe: {
+        sim: 'classicChrome',
+        grain: 1, grainSize: 'small',
+        cce: 2, ccfxb: 1,
+        wb: 'autoWhite', wbR: 3, wbB: -5,
+        drp: 'off', dr: 100, highlight: 1, shadow: 0.5,
+        color: 3, sharpness: -2, nr: -4, clarity: 0,
+      },
+    },
   ],
 };

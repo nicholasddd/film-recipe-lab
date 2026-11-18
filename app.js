@@ -59,6 +59,7 @@
   const CAM_NAME = (window.MY_RECIPES && window.MY_RECIPES.camera) || 'X-T30 II';
   const CAM = window.RecipeTools.CAMERAS[CAM_NAME];
   const REP_SLOTS = CAM.slots;
+  if (window.RecipeTools.setNameMax) window.RecipeTools.setNameMax(CAM.nameMax);
   const simOpts = Object.entries(FE.SIMS).map(([k, s]) => [k, CAM.sims.includes(k) ? s.name : `${s.name} (not on ${CAM_NAME})`]);
   const isMono = () => FE.SIMS[state.recipe.sim].mono;
   const CONTROLS = [
@@ -1273,7 +1274,8 @@
     const others = store.recipes.filter((x) => !form.entry || x.id !== form.entry.id).map((x) => x.name);
     const scn = RT.suggestScenarios(r, store.scenarios);
     if (!form.scnTouched) $('formScn').querySelectorAll('.chip').forEach((b) => { if (!b.dataset.touched) b.classList.toggle('on', scn.includes(b.textContent)); });
-    $('formCode').innerHTML = `Saves as <b>${esc(RT.makeName(r, $('formName').value.trim(), scn, others))}</b><br>${esc(FE.SIMS[r.sim].name)} · ${TEMP[a.temp]} · ${TONE[a.tone]} contrast`;
+    const camName = RT.makeName(r, $('formName').value.trim(), scn, others);
+    $('formCode').innerHTML = `Saves as <b>${esc(camName)}</b> <span class="hint">(${camName.length}/${CAM.nameMax} characters on the camera)</span><br>${esc(FE.SIMS[r.sim].name)} · ${TEMP[a.temp]} · ${TONE[a.tone]} contrast`;
   }
   function saveForm() {
     const recipe = formRecipe();
@@ -1308,6 +1310,18 @@
     if (!list.includes(state.libFilter)) state.libFilter = 'All';
     state.lineupScenario = null;
     persist();
+  }
+
+  // keep every cartridge name within the camera's name length
+  function fitNames() {
+    let changed = false;
+    store.recipes.forEach((r) => {
+      if (r.name.length <= CAM.nameMax) return;
+      const others = store.recipes.filter((x) => x !== r).map((x) => x.name);
+      r.name = RT.makeName(r.recipe, r.aka || splitName(r.name)[1], r.scenarios, others);
+      changed = true;
+    });
+    if (changed) persist();
   }
 
   // your own recipes from my-recipes.js. Each is added once; when its entry in the file
@@ -1449,6 +1463,7 @@
   persist();
   syncPlaylists();
   seedMine();
+  fitNames();
   buildControls();
   buildExposure();
   renderQuickLineup();
