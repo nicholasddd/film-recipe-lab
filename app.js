@@ -312,7 +312,9 @@
         c.getContext('2d').drawImage(img, 0, 0);
         URL.revokeObjectURL(url);
         if (exif && exif.aperture && exif.shutter && exif.iso) setOrig({ aperture: exif.aperture, shutter: exif.shutter, iso: exif.iso });
+        state.scene = null;
         setFullImage(c);
+        renderScenes();
         $('badge').textContent += exif && exif.model ? ` · ${exif.model}` : '';
       };
       img.src = url;
@@ -346,6 +348,41 @@
     setOrig({ aperture: 5.6, shutter: 1 / 250, iso: 160 });
     setFullImage(c);
     $('badge').textContent += ' · test chart';
+  }
+
+  // ---------------- sample scenes (samples.js): real photos for testing recipes ----------------
+  const SCENES = window.SAMPLE_SCENES || [];
+  function loadScene(sc) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous'; // Wikimedia allows it, so the canvas stays readable
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      setOrig({ aperture: 8, shutter: 1 / 250, iso: 200 });
+      state.scene = sc;
+      setFullImage(c);
+      $('badge').textContent += ` · ${sc.label}`;
+      renderScenes();
+    };
+    img.onerror = () => { $('sceneCredit').textContent = `Couldn't load "${sc.label}" (offline?). Showing the test chart.`; };
+    img.src = sc.src;
+  }
+  function renderScenes() {
+    const el = $('scenes');
+    if (!el) return;
+    el.innerHTML = SCENES.map((sc) => `<button class="scene${state.scene === sc ? ' on' : ''}" data-k="${sc.key}" title="${esc(sc.tests)}">
+      <img src="${sc.src.replace('/1280px-', '/330px-')}" alt="" loading="lazy" crossorigin="anonymous"><span>${esc(sc.label)}</span></button>`).join('')
+      + `<button class="scene chart${state.scene ? '' : ' on'}" data-k="chart"><span>Test chart</span></button>`;
+    el.querySelectorAll('.scene').forEach((b) => (b.onclick = () => {
+      if (b.dataset.k === 'chart') { state.scene = null; makeTestChart(); renderScenes(); return; }
+      loadScene(SCENES.find((x) => x.key === b.dataset.k));
+    }));
+    const sc = state.scene;
+    // cartridge faces elsewhere show the same photo, so credit it there too
+    const fc = $('faceCredit');
+    if (fc) fc.innerHTML = sc ? `Cartridge faces: ${esc(sc.label)} · Photo <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a>, <a href="${sc.licenseUrl}" target="_blank" rel="noopener">${esc(sc.license)}</a>, via Wikimedia Commons, shown with each recipe applied` : '';
+    $('sceneCredit').innerHTML = sc ? `<b>${esc(sc.label)}</b>: ${esc(sc.tests)} · Photo: <a href="${sc.page}" target="_blank" rel="noopener">${esc(sc.author)}</a>, <a href="${sc.licenseUrl}" target="_blank" rel="noopener">${esc(sc.license)}</a>, via Wikimedia Commons (shown with the recipe applied)` : '';
   }
 
   // ---------------- rendering ----------------
@@ -1505,7 +1542,7 @@
   document.querySelectorAll('nav button').forEach((b) => (b.onclick = () => switchTab(b.dataset.tab)));
   $('btnUpload').onclick = () => $('file').click();
   $('file').onchange = (e) => e.target.files[0] && loadFile(e.target.files[0]);
-  $('btnSample').onclick = makeTestChart;
+  $('btnSample').onclick = () => { state.scene = null; makeTestChart(); renderScenes(); };
   $('split').oninput = () => lastOut && draw();
   $('btnExport').onclick = exportJpeg;
   $('btnReset').onclick = () => { state.recipe = { ...FE.DEFAULT_RECIPE }; state.loadedId = null; onRecipeChange(); renderQuickLineup(); };
@@ -1603,5 +1640,8 @@
   buildExposure();
   renderQuickLineup();
   makeTestChart();
+  renderScenes();
+  const firstScene = SCENES.find((x) => x.key === window.DEFAULT_SCENE) || SCENES[0];
+  if (firstScene) loadScene(firstScene);
   switchTab(pageFromHash() || 'home');
 })();
