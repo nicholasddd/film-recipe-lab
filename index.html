@@ -120,7 +120,7 @@
   .ring-stage { position: relative; perspective: 1100px; perspective-origin: 50% -35%; cursor: grab; touch-action: pan-y; user-select: none; overflow: hidden; }
   .ring-stage.dragging { cursor: grabbing; }
   .ring { position: absolute; left: 50%; top: 56%; transform-style: preserve-3d; }
-  .ocard { position: absolute; width: 150px; height: 200px; left: -75px; top: -100px; border-radius: 5px; overflow: hidden; background: #222; cursor: pointer; }
+  .ocard { position: absolute; width: 150px; height: 200px; left: -75px; top: -100px; border-radius: 5px; overflow: hidden; background: #222; cursor: pointer; filter: brightness(var(--shade, 1)); }
   .ocard canvas { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
   .ocard span { position: absolute; left: 8px; bottom: 8px; font-size: 10px; letter-spacing: .08em; background: #000a; color: #fff; padding: 2px 6px; border-radius: 3px; }
   .ocard.front { outline: 2px solid var(--accent); outline-offset: 3px; outline-radius: 5px; }
@@ -147,14 +147,32 @@
   .rep-empty:hover { border-color: var(--accent); color: var(--text); }
   .home-ring { display: flex; flex-direction: column; align-items: center; }
   .home-ring .ring-stage { width: 100%; perspective-origin: 50% -30%; }
-  .hcard { width: 200px; height: 266px; left: -100px; top: -133px; border-radius: 5px; }
-  .hcard::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35), transparent 30%, transparent 55%, rgba(0,0,0,.7)); pointer-events: none; }
+  /* cartridge: glass face, chrome edge (stacked layers), metal back */
+  .home-ring .ring { top: 40%; }
+  .hcard { width: 200px; height: 266px; left: -100px; top: -133px; border-radius: 5px; overflow: visible; background: none; transform-style: preserve-3d; filter: none; }
+  .hc-face, .hc-back, .hc-edge { position: absolute; inset: 0; border-radius: 5px; filter: brightness(var(--shade, 1)); }
+  .hc-face { overflow: hidden; backface-visibility: hidden; transform: translateZ(1px); background: #111; box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), inset 0 1px 0 rgba(255,255,255,.5); }
+  .hc-face::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35), transparent 30%, transparent 55%, rgba(0,0,0,.7)); pointer-events: none; }
+  .hc-edge { background: linear-gradient(135deg, #f4f6f8 0%, #9aa1a8 28%, #eef1f3 48%, #6b7178 72%, #d3d8dc 100%); }
+  .hc-back { backface-visibility: hidden; background: linear-gradient(135deg, #4a5057 0%, #17191c 42%, #5a6168 58%, #1d2024 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); display: grid; place-items: center; }
+  .hc-back span { position: static; background: none; color: rgba(255,255,255,.25); font-size: 34px; font-weight: 500; letter-spacing: -.04em; padding: 0; }
+  .hc-sheen { position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: screen;
+    background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.34) 47%, rgba(255,255,255,.08) 53%, transparent 62%);
+    background-size: 320% 100%; background-position: calc(var(--sheen, 50) * 1%) 0; }
+  .hcard.front { outline: none; }
+  .hcard.front .hc-face { box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 0 0 2px var(--accent); }
+  .hcard-refl { position: absolute; width: 200px; height: 266px; left: -100px; top: -133px; border-radius: 5px; overflow: hidden; background: #2a2d31; opacity: .2; backface-visibility: hidden; }
+  .hcard-refl canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .hcard-refl.empty { background: #1e1e1e; opacity: .12; }
+  #homeRefl { pointer-events: none; }
+  .refl-fade { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; background: linear-gradient(180deg, rgba(20,20,20,.15), var(--bg) 70%); }
   .hcard .hc-slot { position: absolute; z-index: 1; top: 10px; left: 12px; right: auto; bottom: auto; background: none; padding: 0; font-size: 30px; font-weight: 500; letter-spacing: -.04em; color: #fff; }
   .hcard .hc-bottom { position: absolute; z-index: 1; left: 12px; right: 12px; bottom: 12px; color: #fff; }
   .hcard .hc-bottom b { display: block; font-size: 19px; font-weight: 500; letter-spacing: -.03em; line-height: 1; text-transform: uppercase; }
   .hcard .hc-bottom small { font-size: 10px; opacity: .75; letter-spacing: .04em; }
-  .hcard.empty { background: #1b1b1b; border: 1px dashed #4a4a4a; }
-  .hcard.empty::after { display: none; }
+  .hcard.empty .hc-face { background: rgba(28,28,28,.95); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+  .hcard.empty .hc-face::after { display: none; }
+  .hcard.empty .hc-edge { background: linear-gradient(135deg, #6a6f75, #2c2f33 50%, #565b61); }
   .hcard.empty .hc-slot { color: #666; }
   .hc-empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #777; font-size: 13px; line-height: 1.5; }
   .ocard.back span, .ocard.back .hc-bottom, .ocard.back .hc-empty { opacity: 0; }
@@ -269,7 +287,7 @@
     </div>
   </div>
   <div class="home-ring">
-    <div class="ring-stage" id="homeStage"><div class="ring" id="homeRing"></div></div>
+    <div class="ring-stage" id="homeStage"><div class="ring" id="homeRefl" aria-hidden="true"></div><div class="refl-fade" id="homeFade"></div><div class="ring" id="homeRing"></div></div>
     <div class="slot-nav" id="slotNav" aria-label="Cartridge slots"></div>
     <div class="cart-detail" id="cartDetail" aria-live="polite"></div>
   </div>
