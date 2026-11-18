@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Film Recipe Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
 <style>
   :root {
-    --bg: #141414; --panel: #1d1d1d; --panel2: #262626; --line: #333;
-    --text: #e8e6e1; --muted: #9a978f; --accent: #e8a33d; --danger: #d9534f;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --bg: #110f0d; --panel: #1a1816; --panel2: #262320; --line: rgba(250, 250, 249, .1);
+    --text: #fafaf9; --muted: #a6a09b; --soft: #d6d3d1; --accent: #ff6a1f; --danger: #f2614b;
+    --on-accent: #110f0d;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-size: 13px; }
@@ -24,7 +25,8 @@
   button, select, input { font: inherit; color: var(--text); }
   .btn { background: var(--panel2); border: 1px solid var(--line); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
   .btn:hover { border-color: #555; }
-  .btn.primary { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 500; }
+  .btn.primary:hover { background: #fff; border-color: #fff; }
   .btn.small { padding: 3px 8px; font-size: 12px; }
   .btn.danger { color: var(--danger); }
   select, input[type=number], input[type=text], textarea { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
@@ -64,7 +66,7 @@
   #library, #lineups, #cartridges { padding: 16px 20px; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 14px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip { background: var(--panel2); border: 1px solid var(--line); color: var(--muted); padding: 4px 10px; border-radius: 999px; cursor: pointer; font-size: 12px; }
-  .chip.on { color: #1a1a1a; background: var(--accent); border-color: var(--accent); }
+  .chip.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
   .chip .n { opacity: .6; margin-left: 4px; }
   .lib-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
@@ -79,10 +81,10 @@
   /* library: mode toggle */
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
   .seg button { background: none; border: 0; color: var(--muted); padding: 5px 14px; cursor: pointer; font: inherit; }
-  .seg button.on { background: var(--accent); color: #1a1a1a; font-weight: 600; }
+  .seg button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 
   /* library: staggered editorial grid */
-  .display { font-family: 'Inter Tight', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .display { font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-optical-sizing: auto; }
   .masonry { columns: 4 250px; column-gap: 18px; }
   .masonry > .empty { column-span: all; }
   .pin { break-inside: avoid; margin: 0 0 18px; position: relative; overflow: hidden; border-radius: 3px; container-type: inline-size; color: #fff; background: #222; width: 100%; }
@@ -184,7 +186,7 @@
   .slot-nav { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
   .slot-chip { background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 5px 12px; cursor: pointer; font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; }
   .slot-chip.none { color: #666; border-style: dashed; }
-  .slot-chip.on { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 600; }
+  .slot-chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
   .cart-detail { width: min(760px, 100%); margin-top: 22px; padding: 18px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
   .cd-head h2 { margin: 2px 0 12px; font-size: clamp(30px, 5vw, 52px); font-weight: 500; letter-spacing: -.05em; line-height: .9; text-transform: uppercase; }
   .cd-head .kicker { margin: 0; }
@@ -258,7 +260,7 @@
   @media (max-width: 760px) { .form-grid { grid-template-columns: 1fr; } }
   .qm { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; padding: 0; border-radius: 50%; border: 1px solid #555; background: none; color: var(--muted); font-size: 10px; line-height: 1; cursor: pointer; vertical-align: 1px; }
   .qm:hover, .qm:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
-  #tip { position: fixed; z-index: 1000; background: #2b2b2b; color: var(--text); border: 1px solid #444; border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.45; box-shadow: 0 10px 30px #0008; }
+  #tip { position: fixed; z-index: 1000; background: var(--panel2); color: var(--text); border: 1px solid rgba(250, 250, 249, .14); border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.45; box-shadow: 0 10px 30px #0008; }
   dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; width: min(440px, 92vw); padding: 18px; }
   dialog::backdrop { background: #000a; }
   dialog h2 { margin: 0 0 12px; font-size: 15px; }
@@ -271,6 +273,13 @@
     .canvas-wrap { height: 60vh; }
     .lineup-grid { grid-template-columns: repeat(2, 1fr); }
   }
+  /* type roles */
+  .display h1, .display h2, .display h3, .display b, header h1, .pin-top h3, .ring-cap b, .crow-main b, .hcard .hc-bottom b, .hc-slot { font-weight: 600; }
+  header h1, .home-hero h1, .orbit-block h2, .pl-head h2, .cd-head h2 { font-family: 'Inter', sans-serif; font-optical-sizing: auto; }
+  .kicker, .pin-code, .slot-chip, .idx, .cnt, .ocard span, .crow-main small, .cd-settings dt, .exp-grid .hd, aside h3, #timing, .badge {
+    font-family: 'Geist Mono', ui-monospace, monospace; }
+  .kicker, aside h3, .cd-settings dt { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+  .hint { color: var(--muted); }
 </style>
 </head>
 <body>

@@ -369,7 +369,7 @@
     if (split > 0) {
       const sx = Math.round(cv.width * split);
       ctx.putImageData(state.src, 0, 0, 0, 0, sx, cv.height);
-      ctx.fillStyle = '#e8a33d'; ctx.fillRect(sx - 1, 0, 2, cv.height);
+      ctx.fillStyle = '#ff6a1f'; ctx.fillRect(sx - 1, 0, 2, cv.height);
     }
   }
 
