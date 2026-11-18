@@ -151,5 +151,19 @@ window.MY_RECIPES = {
         color: 4, sharpness: -2, nr: -4, clarity: 0,
       },
     },
+    {
+      id: 'mine-miyazaki',
+      aka: 'Miyazaki',
+      // Velvia greens and blues, Clarity -3 glow, warm daylight shift: lush skies and landscapes
+      scenarios: ['Dolomites 2027', 'European Summer', 'Beach'],
+      recipe: {
+        sim: 'velvia',
+        grain: 2, grainSize: 'small',
+        cce: 2, ccfxb: 1,
+        wb: 'daylight', wbR: 2, wbB: -4,
+        drp: 'weak',
+        color: 4, sharpness: -1, nr: -4, clarity: -3,
+      },
+    },
   ],
 };
