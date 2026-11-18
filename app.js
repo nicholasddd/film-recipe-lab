@@ -543,8 +543,8 @@
     el.style.aspectRatio = ratio;
     const cv = thumbCanvas(r.recipe);
     cv.className = 'pin-img';
-    cv.title = 'Open in editor';
-    cv.onclick = () => loadRecipe(r);
+    cv.title = 'Open cartridge';
+    cv.onclick = () => openReveal(r, cv, el);
     el.appendChild(cv);
     if (thumbLum(r.recipe) > 0.6) el.classList.add('light');
     const host = r.source ? (r.source.match(/^https?:\/\/(?:www\.)?([^/]+)/) || [])[1] : '';
@@ -561,7 +561,7 @@
       <div class="pin-actions"><button data-a="edit">Edit</button><button data-a="dup">Duplicate</button><button data-a="copy">Copy text</button><button data-a="del" class="del">Delete</button></div>`);
     const mini = el.querySelector('.pin-card canvas'), s = Math.min(cv.width, cv.height);
     mini.getContext('2d').drawImage(cv, (cv.width - s) / 2, (cv.height - s) / 2, s, s, 0, 0, 88, 88);
-    el.querySelector('.pin-open').onclick = () => loadRecipe(r);
+    el.querySelector('.pin-open').onclick = () => openReveal(r, cv, el);
     el.querySelector('[data-a=dup]').onclick = () => { store.recipes.push({ ...r, id: uid(), name: r.name + ' copy', scenarios: [...r.scenarios], recipe: { ...r.recipe }, created: Date.now() }); persist(); renderLibrary(); };
     el.querySelector('[data-a=copy]').onclick = (e) => { navigator.clipboard.writeText(recipeText(r.recipe, r.name)); e.target.textContent = 'Copied'; };
     el.querySelector('[data-a=del]').onclick = () => deleteRecipe(r);
@@ -615,7 +615,7 @@
         c.insertAdjacentHTML('beforeend', `<span>${esc(splitName(r.name)[0] || sim3(r))}</span>`);
         c.onclick = () => {
           if (ring.moved) return;
-          if (frontIndex(ring) === i) loadRecipe(r);
+          if (frontIndex(ring) === i) openReveal(r, c, c);
           else { ring.vel = 0; ring.snap = ring.theta + angDelta(-i * step, ring.theta); }
         };
         ringEl.appendChild(c);
@@ -1045,21 +1045,156 @@
       row.className = 'crow';
       const cv = thumbCanvas(r.recipe);
       cv.className = 'crow-img';
-      cv.title = 'Try in simulator';
-      cv.onclick = () => loadRecipe(r);
+      cv.title = 'Open cartridge';
+      cv.onclick = () => openReveal(r, cv, cv);
       row.appendChild(cv);
       row.insertAdjacentHTML('beforeend', `
         <div class="crow-main display"><b>${esc(r.aka || title)}</b><small>${code ? esc(code) + ' · ' : ''}${esc(FE.SIMS[r.recipe.sim].name)}${r.source ? ' · ' + esc((r.source.match(/^https?:\/\/(?:www\.)?([^/]+)/) || [])[1] || '') : ''}</small></div>
         <div class="crow-slot">${slot >= 0 ? `<span class="slot-chip on">C${slot + 1}</span>` : ''}</div>
         <div class="crow-tags">${r.scenarios.length ? r.scenarios.map((sc) => `<span>${esc(sc)}</span>`).join('') : '<em>Not in a playlist</em>'}</div>
-        <div class="crow-act"><button class="btn small" data-a="sim">Try</button><button class="btn small" data-a="edit">Edit</button><button class="btn small" data-a="dup">Duplicate</button><button class="btn small danger" data-a="del">Delete</button></div>`);
-      row.querySelector('[data-a=sim]').onclick = () => loadRecipe(r);
+        <div class="crow-act"><button class="btn small" data-a="sim">View</button><button class="btn small" data-a="edit">Edit</button><button class="btn small" data-a="dup">Duplicate</button><button class="btn small danger" data-a="del">Delete</button></div>`);
+      row.querySelector('[data-a=sim]').onclick = () => openReveal(r, cv, cv);
       row.querySelector('[data-a=edit]').onclick = () => openForm({ entry: r });
       row.querySelector('[data-a=dup]').onclick = () => { store.recipes.push({ ...r, id: uid(), name: r.name + ' copy', scenarios: [...r.scenarios], recipe: { ...r.recipe }, created: Date.now(), updated: undefined }); persist(); renderCartridges(); };
       row.querySelector('[data-a=del]').onclick = () => deleteRecipe(r);
       root.appendChild(row);
     });
   }
+
+  // ---------------- cartridge reveal: lay flat, fly to the viewer, flip to the recipe ----------------
+  // One continuous gesture: the card tips back off its rack, sweeps forward and up to face you,
+  // then turns over. Closing plays the same path in reverse, back to where it came from.
+  let reveal = null;
+  const EASE = { out: 'cubic-bezier(.16, 1, .3, 1)', inOut: 'cubic-bezier(.65, 0, .35, 1)', lift: 'cubic-bezier(.45, 0, .55, 1)' };
+  const cardT = (x, y, z, s, rx, rz = 0) => `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z}px) scale(${s.toFixed(3)}) rotateX(${rx}deg) rotateZ(${rz}deg)`;
+  function revealOrigin(el, W, H) {
+    if (el && el.isConnected && el.getClientRects().length) {
+      const b = el.getBoundingClientRect();
+      if (b.width > 4 && b.bottom > 0 && b.top < innerHeight) {
+        return { dx: b.left + b.width / 2 - innerWidth / 2, dy: b.top + b.height / 2 - innerHeight / 2, s: Math.max(0.12, Math.min(b.width / W, b.height / H)) };
+      }
+    }
+    return { dx: 0, dy: innerHeight * 0.55, s: 0.5 }; // origin gone or off screen: rise from below
+  }
+  function openReveal(r, rectEl, hideEl) {
+    if (reveal) return;
+    const rp = getRepertoire(), slot = rp.indexOf(r.id);
+    const [code, title] = splitName(r.name);
+    const W = Math.round(Math.min(380, innerWidth * 0.86, (innerHeight - 120) * 0.75)), H = Math.round(W * 4 / 3);
+    const lines = recipeText(r.recipe).split('\n').slice(1).map((l) => l.split(/:\s(.+)/));
+    if (r.iso) lines.push(['ISO', r.iso]);
+    if (r.ec) lines.push(['Exposure comp.', r.ec]);
+    const root = document.createElement('div');
+    root.className = 'reveal';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.setAttribute('aria-label', `${r.aka || title} recipe`);
+    root.innerHTML = `
+      <div class="rv-backdrop"></div>
+      <div class="rv-stage">
+        <div class="rv-shadow" style="width:${W * 0.9}px;margin-left:${-W * 0.45}px;top:calc(50% + ${H / 2 + 14}px)"></div>
+        <div class="rv-card" style="width:${W}px;height:${H}px;margin:${-H / 2}px 0 0 ${-W / 2}px">
+          <div class="rv-flip">
+            ${Array.from({ length: 7 }, (_, k) => `<div class="rv-edge" style="transform:translateZ(${-k - 1}px)"></div>`).join('')}
+            <div class="rv-face rv-front display">
+              <span class="rv-slot">${slot >= 0 ? 'C' + (slot + 1) : ''}</span>
+              <div class="rv-title"><b>${esc(r.aka || title)}</b><small>${code ? esc(code) + ' · ' : ''}${esc(FE.SIMS[r.recipe.sim].name)}</small></div>
+              <div class="rv-sheen"></div>
+            </div>
+            <div class="rv-face rv-back">
+              <div class="rv-back-inner">
+                <div class="rv-top"><span class="kicker">${slot >= 0 ? `C${slot + 1} · ` : ''}${esc(code || FE.SIMS[r.recipe.sim].name)}</span>
+                  <button class="rv-close" aria-label="Close">✕</button></div>
+                <h2 class="display rv-row">${esc(r.aka || title)}</h2>
+                <div class="rv-sub rv-row">${esc(FE.SIMS[r.recipe.sim].name)}${r.scenarios.length ? ' · ' + esc(r.scenarios.join(', ')) : ''}</div>
+                <dl class="rv-settings">${lines.map(([k, v]) => `<div class="rv-row"><dt>${esc(k)}</dt><dd>${esc(v || '')}</dd></div>`).join('')}</dl>
+                ${r.notes ? `<p class="rv-notes rv-row">${esc(r.notes)}</p>` : ''}
+                <div class="rv-actions rv-row"><button class="btn primary" data-a="edit">Edit</button><button class="btn" data-a="copy">Copy settings</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    const front = root.querySelector('.rv-front');
+    const big = document.createElement('canvas'), src = thumbCanvas(r.recipe);
+    big.width = src.width; big.height = src.height;
+    big.getContext('2d').drawImage(src, 0, 0);
+    front.prepend(big);
+    document.body.appendChild(root);
+    document.body.classList.add('rv-open');
+
+    const card = root.querySelector('.rv-card'), flip = root.querySelector('.rv-flip'), bd = root.querySelector('.rv-backdrop');
+    const shadow = root.querySelector('.rv-shadow'), sheen = root.querySelector('.rv-sheen');
+    const o = revealOrigin(rectEl, W, H);
+    if (hideEl) hideEl.classList.add('rv-hidden');
+    reveal = { root, card, flip, bd, shadow, hideEl, rectEl, W, H, r, returnFocus: document.activeElement };
+
+    const fill = 'both';
+    if (reduceMotion) {
+      flip.style.transform = 'rotateY(180deg)';
+      root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, fill });
+    } else {
+      bd.animate([{ opacity: 0, backdropFilter: 'blur(0px)' }, { opacity: 1, backdropFilter: 'blur(16px)' }], { duration: 900, easing: EASE.out, fill });
+      card.animate([
+        { offset: 0, transform: cardT(o.dx, o.dy, 0, o.s, 0), easing: EASE.lift },
+        // tip back until it lies nearly flat, lifting slightly off the rack
+        { offset: 0.3, transform: cardT(o.dx, o.dy - 18, 40, o.s * 1.06, 70), easing: 'cubic-bezier(.3, 0, .2, 1)' },
+        // sweep forward and up towards the viewer, rising out of the flat pose
+        { offset: 0.74, transform: cardT(o.dx * 0.1, -28, 240, 1.04, 10, -1.5), easing: EASE.out },
+        { offset: 1, transform: cardT(0, 0, 0, 1, 0, 0) },
+      ], { duration: 1250, fill });
+      shadow.animate([{ opacity: 0, transform: 'scale(.35)' }, { opacity: 0, transform: 'scale(.35)', offset: 0.35 }, { opacity: 0.75, transform: 'scale(1)' }],
+        { duration: 1250, easing: EASE.out, fill });
+      sheen.animate([{ transform: 'translateX(-130%)' }, { transform: 'translateX(130%)' }], { duration: 1000, delay: 380, easing: EASE.inOut, fill });
+      // turn over to the recipe, rising a little at the halfway point
+      flip.animate([
+        { transform: 'translateZ(0) rotateY(0deg)' },
+        { transform: 'translateZ(70px) rotateY(90deg)', offset: 0.5 },
+        { transform: 'translateZ(0) rotateY(180deg)' },
+      ], { duration: 760, delay: 1150, easing: EASE.inOut, fill });
+      root.querySelectorAll('.rv-row').forEach((row, k) =>
+        row.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 1600 + k * 32, easing: EASE.out, fill }));
+    }
+
+    bd.onclick = closeReveal;
+    root.querySelector('.rv-close').onclick = closeReveal;
+    root.querySelector('[data-a=copy]').onclick = (e) => { navigator.clipboard.writeText(recipeText(r.recipe, r.aka || r.name)); e.target.textContent = 'Copied'; };
+    root.querySelector('[data-a=edit]').onclick = () => closeReveal().then(() => openForm({ entry: r }));
+    setTimeout(() => reveal && reveal.root === root && root.querySelector('.rv-close').focus({ preventScroll: true }), reduceMotion ? 250 : 1900);
+  }
+  function closeReveal() {
+    if (!reveal || reveal.closing) return reveal ? reveal.closing : Promise.resolve();
+    const v = reveal;
+    const done = () => {
+      v.root.remove();
+      if (v.hideEl) v.hideEl.classList.remove('rv-hidden');
+      document.body.classList.remove('rv-open');
+      if (v.returnFocus && v.returnFocus.focus) v.returnFocus.focus({ preventScroll: true });
+      reveal = null;
+    };
+    if (reduceMotion) {
+      v.closing = v.root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: 'both' }).finished.then(done);
+      return v.closing;
+    }
+    // freeze every running animation where it is, then play the path back
+    v.root.getAnimations({ subtree: true }).forEach((a) => { try { a.commitStyles(); } catch (e) { /* detached */ } a.cancel(); });
+    const o = revealOrigin(v.rectEl, v.W, v.H), fill = 'both';
+    const flipBack = v.flip.animate([
+      { transform: getComputedStyle(v.flip).transform },
+      { transform: 'translateZ(60px) rotateY(90deg)', offset: 0.5 },
+      { transform: 'translateZ(0) rotateY(0deg)' },
+    ], { duration: 520, easing: EASE.inOut, fill });
+    const fly = v.card.animate([
+      { transform: getComputedStyle(v.card).transform, easing: 'cubic-bezier(.5, 0, .3, 1)' },
+      { offset: 0.45, transform: cardT(o.dx * 0.35, o.dy * 0.35 - 30, 160, 1, 38), easing: 'cubic-bezier(.4, 0, .1, 1)' },
+      { transform: cardT(o.dx, o.dy, 0, o.s, 0) },
+    ], { duration: 820, delay: 380, fill });
+    v.shadow.animate([{ opacity: 0.75 }, { opacity: 0 }], { duration: 500, delay: 380, fill });
+    v.bd.animate([{ opacity: 1, backdropFilter: 'blur(16px)' }, { opacity: 0, backdropFilter: 'blur(0px)' }], { duration: 700, delay: 520, easing: EASE.inOut, fill });
+    v.closing = Promise.all([flipBack.finished, fly.finished]).then(done);
+    return v.closing;
+  }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && reveal) { e.preventDefault(); closeReveal(); } });
 
   // ---------------- home: current repertoire + playlists ----------------
   const getRepertoire = () => {
@@ -1097,9 +1232,9 @@
     el.innerHTML = `<div class="cd-head display"><span class="kicker">C${i + 1} · ${esc(code)}</span><h2>${esc(r.aka || title)}</h2></div>
       <dl class="cd-settings">${lines.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v || '')}</dd></div>`).join('')}</dl>
       ${r.notes ? `<p class="hint">${esc(r.notes)}</p>` : ''}
-      <div class="cd-actions"><button class="btn primary" data-a="sim">Try in simulator</button><button class="btn" data-a="edit">Edit</button>
+      <div class="cd-actions"><button class="btn primary" data-a="sim">Open cartridge</button><button class="btn" data-a="edit">Edit</button>
         <button class="btn" data-a="copy">Copy settings</button><button class="btn" data-a="swap">Swap</button><button class="btn danger" data-a="rm">Unload</button></div>`;
-    el.querySelector('[data-a=sim]').onclick = () => loadRecipe(r);
+    el.querySelector('[data-a=sim]').onclick = () => { const c = ring.cards[ci]; openReveal(r, c.querySelector('.hc-face'), c); };
     el.querySelector('[data-a=edit]').onclick = () => openForm({ entry: r });
     el.querySelector('[data-a=copy]').onclick = (e) => { navigator.clipboard.writeText(recipeText(r.recipe, r.aka || r.name)); e.target.textContent = 'Copied'; };
     el.querySelector('[data-a=swap]').onclick = () => pickForRepertoire(i);
@@ -1143,7 +1278,7 @@
       c.onclick = () => {
         if (ring.moved) return;
         if (frontIndex(ring) !== i) rotateRingTo(ring, i);
-        else if (r) loadRecipe(r);
+        else if (r) openReveal(r, c.querySelector('.hc-face'), c);
         else openForm({ slot: (i % slots.length) + 1 });
       };
       ringEl.appendChild(c);
