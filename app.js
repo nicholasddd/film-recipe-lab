@@ -829,7 +829,7 @@
     };
     stage.onpointerup = stage.onpointercancel = () => {
       if (ring.drag && !ring.moved) { ring.vel = 0; ring.pvel = 0; }
-      else if (ring.orbit) { /* glide, then stay where it was left */ }
+      else if (ring.orbit) { ring.settlePending = true; ring.pauseUntil = performance.now() + 4000; } // glide, settle on a card, then drift again
       else if (Math.abs(ring.vel) < 0.3) { const fo = ring.focus || 0; ring.snap = fo + Math.round((ring.theta - fo) / ring.step) * ring.step; ring.pauseUntil = performance.now() + 2500; }
       ring.drag = null;
       stage.classList.remove('dragging');
@@ -854,7 +854,10 @@
     if (sz !== homeSizeSeen && homeRing && $('home').classList.contains('active')) { homeSizeSeen = sz; renderHome(); }
   });
 
+  let lastTick = 0;
   function orbitTick() {
+    const nowT = performance.now(), dt = Math.min(64, nowT - (lastTick || nowT)); // ms since last frame, capped after tab switches
+    lastTick = nowT;
     for (const ring of allRings()) {
       if (!ring.visible) continue;
       const prevTheta = ring.theta;
@@ -873,9 +876,12 @@
           ring.pvel = (ring.pvel || 0) * 0.9;
           if (Math.abs(ring.vel) < 0.01) ring.vel = 0;
           if (Math.abs(ring.pvel) < 0.01) ring.pvel = 0;
-          if (ring.settle && Math.abs(ring.vel) < 0.15) {
+          if (ring.settlePending && Math.abs(ring.vel) < 0.15) {
+            ring.settlePending = false;
             const fo = ring.focus || 0, target = fo + Math.round((ring.theta - fo) / ring.step) * ring.step;
             if (Math.abs(target - ring.theta) > 0.05) { ring.vel = 0; ring.snap = target; }
+          } else if (!ring.settlePending && ring.idleSpin && !ring.hover && !reduceMotion && performance.now() >= (ring.pauseUntil || 0)) {
+            ring.theta -= (ring.idleSpin * dt) / 1000; // very slow drift while left alone, in real time on any refresh rate
           }
         } else {
           // a fling coasts and eases back to cruising speed; hovering or a recent pick holds it still
@@ -935,6 +941,7 @@
   function stopOrbit() {
     if (orbitRAF) cancelAnimationFrame(orbitRAF);
     orbitRAF = 0;
+    lastTick = 0;
   }
   function deleteRecipe(r) {
     const inLineups = Object.entries(store.lineups).filter(([, ids]) => ids.includes(r.id)).map(([s]) => s);
@@ -1449,6 +1456,7 @@
     homeRing = Object.assign(homeRing || { theta: FOCUS - first * step, vel: 0, snap: null }, {
       n, step, R, items, cardW: HOME_W, drag: null, hover: false, fi: -1, visible: true,
       orbit: true, pitch: homeRing ? homeRing.pitch : -6, pvel: 0, dragGain: 0.32, lean: null,
+      idleSpin: 2, // degrees per second: one revolution in about three minutes
       focus: FOCUS, cardTurn: -90, zPush: 420, faceFront: true, settle: true, shadeMin: 0.45, // zPush: camera distance from the ring centre
     });
     const ring = homeRing, stage = $('homeStage'), ringEl = $('homeRing');
