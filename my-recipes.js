@@ -137,5 +137,19 @@ window.MY_RECIPES = {
         color: 3, sharpness: -2, nr: -4, clarity: 0,
       },
     },
+    {
+      id: 'mine-anime',
+      aka: 'Anime',
+      // +2 Blue (not minus) with +2 Red: cool, slightly pink, airy pastels; very soft curve
+      scenarios: ['Beach', 'European Summer'],
+      recipe: {
+        sim: 'classicChrome',
+        grain: 0,
+        cce: 2, ccfxb: 0,
+        wb: 'daylight', wbR: 2, wbB: 2,
+        drp: 'off', dr: 400, highlight: -2, shadow: -2,
+        color: 4, sharpness: -2, nr: -4, clarity: 0,
+      },
+    },
   ],
 };
