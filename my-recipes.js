@@ -165,5 +165,19 @@ window.MY_RECIPES = {
         color: 4, sharpness: -1, nr: -4, clarity: -3,
       },
     },
+    {
+      id: 'mine-ani',
+      aka: 'Ani',
+      // Velvia, neutral 5600K, harder curve and FX Blue Strong: vivid, crisp, deep skies; Clarity -3 glow
+      scenarios: ['European Summer', 'Beach', 'Dolomites 2027'],
+      recipe: {
+        sim: 'velvia',
+        grain: 0,
+        cce: 2, ccfxb: 2,
+        wb: 'kelvin', kelvin: 5600, wbR: 0, wbB: 0,
+        drp: 'off', dr: 400, highlight: 1, shadow: 0.5,
+        color: 4, sharpness: -2, nr: -4, clarity: -3,
+      },
+    },
   ],
 };
