@@ -8,15 +8,17 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
 <style>
   :root {
-    --bg: #110f0d; --panel: #1a1816; --panel2: #262320; --line: rgba(250, 250, 249, .1);
-    --text: #fafaf9; --muted: #a6a09b; --soft: #d6d3d1; --accent: #ff6a1f; --danger: #f2614b;
-    --on-accent: #110f0d;
+    --bg: #04070a; --panel: #0e1217; --panel2: #1a2027; --line: rgba(255, 255, 255, .09);
+    --text: #ffffff; --muted: rgba(255, 255, 255, .62); --soft: rgba(255, 255, 255, .8);
+    --accent: #258bff; --accent-mid: #52a2ed; --accent-ice: #a3ceff; --violet: #650cff; --danger: #ff6b6b;
+    --on-accent: #ffffff;
+    --grad-accent: radial-gradient(77% 76% at 18% 45%, #258aff, #abd2ff 47%, #650cff);
     font-family: 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-size: 13px; }
   header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line);
-    position: sticky; top: 0; z-index: 50; background: rgba(17, 15, 13, .82); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+    position: sticky; top: 0; z-index: 50; background: rgba(5, 7, 10, .73); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
   header h1 { font-size: 15px; margin: 0; letter-spacing: .04em; }
   header h1 span { color: var(--accent); }
   nav { display: flex; gap: 4px; }
@@ -26,8 +28,10 @@
   button, select, input { font: inherit; color: var(--text); }
   .btn { background: var(--panel2); border: 1px solid var(--line); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
   .btn:hover { border-color: #555; }
-  .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 500; }
-  .btn.primary:hover { background: #fff; border-color: #fff; }
+  .btn.primary { color: #fff; font-weight: 500; border-color: rgba(163, 206, 255, .45);
+    background: radial-gradient(120% 140% at 50% 0%, rgba(163, 206, 255, .55), rgba(37, 139, 255, .9) 55%, #1a63c9);
+    box-shadow: 0 0 22px rgba(37, 139, 255, .35), inset 0 1px 0 rgba(255, 255, 255, .35); }
+  .btn.primary:hover { border-color: var(--accent-ice); box-shadow: 0 0 30px rgba(37, 139, 255, .5), inset 0 1px 0 rgba(255, 255, 255, .45); }
   .btn.small { padding: 3px 8px; font-size: 12px; }
   .btn.danger { color: var(--danger); }
   select, input[type=number], input[type=text], textarea { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
@@ -137,7 +141,7 @@
   #home { padding: 0 20px 80px; grid-template-columns: minmax(0, 1fr); align-content: start; }
   .home-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 28px 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
   .home-hero h1 { font-size: clamp(52px, 10vw, 140px); font-weight: 500; letter-spacing: -.055em; line-height: .84; margin: 0; text-transform: uppercase; }
-  .kicker { color: var(--accent); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }
+  .kicker { color: var(--accent-ice); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }
   .home-actions { max-width: 320px; display: flex; flex-direction: column; gap: 10px; }
   .home-actions p { margin: 0; }
   .rep-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
@@ -167,7 +171,7 @@
   /* studio lighting around the carousel: a soft key from above and a warm floor glow */
   .home-ring .ring-stage { background:
     radial-gradient(ellipse 42% 30% at 46% 6%, rgba(255, 255, 255, .085), transparent 70%),
-    radial-gradient(ellipse 55% 16% at 50% 90%, rgba(255, 106, 31, .07), transparent 70%); }
+    radial-gradient(ellipse 55% 16% at 50% 90%, rgba(37, 139, 255, .12), transparent 70%); }
   .hc-face { backface-visibility: visible; }
   .hc-back { display: none !important; backface-visibility: hidden; background: linear-gradient(135deg, #4a5057 0%, #17191c 42%, #5a6168 58%, #1d2024 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); display: grid; place-items: center; }
   .hc-back span { position: static; background: none; color: rgba(255,255,255,.25); font-size: 34px; font-weight: 500; letter-spacing: -.04em; padding: 0; }
@@ -180,7 +184,7 @@
   .hcard-refl canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
   .hcard-refl.empty { background: #1e1e1e; opacity: .12; }
   #homeRefl { pointer-events: none; }
-  .refl-fade { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; background: linear-gradient(180deg, rgba(20,20,20,.15), var(--bg) 70%); }
+  .refl-fade { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; background: linear-gradient(180deg, rgba(4,7,10,.15), var(--bg) 70%); }
   .hcard .hc-slot { position: absolute; z-index: 1; top: 10px; left: 12px; right: auto; bottom: auto; background: none; padding: 0; font-size: 30px; font-weight: 500; letter-spacing: -.04em; color: #fff; }
   .hcard .hc-bottom { position: absolute; z-index: 1; left: 12px; right: 12px; bottom: 12px; color: #fff; }
   .hcard .hc-bottom b { display: block; font-size: 19px; font-weight: 500; letter-spacing: -.03em; line-height: 1; text-transform: uppercase; }
@@ -211,7 +215,7 @@
   .hero-text { flex: 1 1 auto; }
   .hero-cam-row h1 { font-size: clamp(46px, 7.4vw, 132px); }
   .cam3d { width: 100%; aspect-ratio: 4 / 3; cursor: grab; touch-action: none; position: relative;
-    background: radial-gradient(ellipse 60% 55% at 50% 55%, rgba(255, 106, 31, .08), transparent 70%); }
+    background: radial-gradient(ellipse 60% 55% at 50% 55%, rgba(37, 139, 255, .16), rgba(101, 12, 255, .05) 45%, transparent 72%); }
   .cam3d.dragging { cursor: grabbing; }
   .cam3d canvas { width: 100% !important; height: 100% !important; display: block; }
   .cam3d.no-webgl { display: grid; place-items: center; color: var(--muted); font-size: 12px; }
@@ -304,6 +308,13 @@
     font-family: 'Geist Mono', ui-monospace, monospace; }
   .kicker, aside h3, .cd-settings dt { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
   .hint { color: var(--muted); }
+  body { background:
+    radial-gradient(ellipse 70% 520px at 50% -140px, rgba(82, 162, 237, .55), rgba(37, 139, 255, .14) 50%, transparent 78%) no-repeat,
+    var(--bg); }
+  .home-hero h1, .cd-head h2, .pl-head h2, .orbit-block h2 {
+    background: linear-gradient(180deg, #ffffff 30%, var(--accent-ice) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header h1 span { background: var(--grad-accent); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .slot-chip.on, .chip.on, .seg button.on { background: radial-gradient(120% 140% at 50% 0%, rgba(163, 206, 255, .5), var(--accent) 60%); box-shadow: 0 0 16px rgba(37, 139, 255, .35); }
 </style>
 </head>
 <body>
@@ -542,12 +553,12 @@
   <div class="foot"><button class="btn danger" id="pickClear">Clear slot</button><button class="btn" id="pickCancel">Cancel</button></div>
 </dialog>
 
-<script src="film-engine.js?v=20261118-1"></script>
-<script src="my-recipes.js?v=20261118-1"></script>
-<script src="recipe-tools.js?v=20261118-1"></script>
-<script src="app.js?v=20261118-1"></script>
-<script src="calibrate.js?v=20261118-1"></script>
+<script src="film-engine.js?v=20261118-2"></script>
+<script src="my-recipes.js?v=20261118-2"></script>
+<script src="recipe-tools.js?v=20261118-2"></script>
+<script src="app.js?v=20261118-2"></script>
+<script src="calibrate.js?v=20261118-2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="camera3d.js?v=20261118-1"></script>
+<script src="camera3d.js?v=20261118-2"></script>
 </body>
 </html>
