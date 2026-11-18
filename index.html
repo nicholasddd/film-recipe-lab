@@ -61,7 +61,7 @@
   .warn { color: var(--accent); }
 
   /* library + lineups */
-  #library, #lineups { padding: 16px 20px; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 14px; }
+  #library, #lineups, #cartridges { padding: 16px 20px; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 14px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip { background: var(--panel2); border: 1px solid var(--line); color: var(--muted); padding: 4px 10px; border-radius: 999px; cursor: pointer; font-size: 12px; }
   .chip.on { color: #1a1a1a; background: var(--accent); border-color: var(--accent); }
@@ -188,6 +188,16 @@
   .cd-settings dd { margin: 0; }
   .cd-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .pl-section { margin-top: 36px; }
+  .cart-list { display: flex; flex-direction: column; gap: 8px; }
+  .crow { display: grid; grid-template-columns: 96px minmax(0, 1.4fr) 56px minmax(0, 1.2fr) auto; align-items: center; gap: 14px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  .crow-img { width: 96px; height: 64px; object-fit: cover; border-radius: 3px; cursor: pointer; display: block; }
+  .crow-main b { display: block; font-size: 20px; font-weight: 500; letter-spacing: -.03em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .crow-main small { color: var(--muted); }
+  .crow-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .crow-tags span { font-size: 11px; background: var(--panel2); border: 1px solid var(--line); padding: 2px 8px; border-radius: 999px; }
+  .crow-tags em { color: var(--muted); font-size: 12px; }
+  .crow-act { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  @media (max-width: 860px) { .crow { grid-template-columns: 96px minmax(0, 1fr) 50px; } .crow-tags, .crow-act { grid-column: 2 / -1; justify-content: flex-start; } }
   .pl-head { display: flex; align-items: baseline; gap: 14px; border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 12px; }
   .pl-head .idx { color: var(--accent); font-size: 12px; }
   .pl-head h2 { margin: 0; font-size: clamp(30px, 5vw, 60px); font-weight: 500; text-transform: uppercase; letter-spacing: -.05em; line-height: .9; }
@@ -263,8 +273,8 @@
   <h1>FILM RECIPE <span>LAB</span></h1>
   <nav>
     <button data-tab="home" class="active">Home</button>
-    <button data-tab="library">Library</button>
-    <button data-tab="lineups">Playlists</button>
+    <button data-tab="library">Playlists</button>
+    <button data-tab="cartridges">Library</button>
     <button data-tab="editor">Simulator</button>
     <button data-tab="calibrate">Calibrate</button>
   </nav>
@@ -341,19 +351,42 @@
       <option value="new">Newest</option><option value="name">Name</option><option value="sim">Film simulation</option>
     </select></label>
     <div class="spacer"></div>
-    <button class="btn small primary" id="btnNewRecipe">+ New recipe</button>
-    <button class="btn small" id="btnPaste">Paste recipes</button>
-    <button class="btn small" id="btnAddScenario">+ Scenario</button>
-    <button class="btn small" id="btnExportLib">Export library</button>
-    <button class="btn small" id="btnImportLib">Import</button>
-    <input type="file" id="importFile" accept="application/json" hidden>
+    <button class="btn small" id="btnAddScenario">+ Playlist</button>
   </div>
   <div class="chips" id="libChips"></div>
   <div class="masonry" id="libGrid"></div>
   <div class="orbit" id="libOrbit" hidden></div>
 </section>
 
-<!-- ============ LINEUPS ============ -->
+<!-- ============ LIBRARY: every cartridge ============ -->
+<section id="cartridges" class="view">
+  <div class="home-hero display">
+    <div><div class="kicker" id="cartCount"></div><h1 style="font-size:clamp(46px,8vw,110px)">Library</h1></div>
+    <div class="home-actions">
+      <p class="hint">Every cartridge you've saved, whether or not it's in a playlist or on the camera.</p>
+      <div>
+        <button class="btn primary" id="btnNewRecipe">+ New cartridge</button>
+        <button class="btn" id="btnPaste">Paste text</button>
+        <button class="btn" id="btnExportLib">Export</button>
+        <button class="btn" id="btnImportLib">Import</button>
+        <input type="file" id="importFile" accept="application/json" hidden>
+      </div>
+    </div>
+  </div>
+  <div class="lib-bar">
+    <input type="text" id="cartSearch" placeholder="Search cartridges…">
+    <label class="hint">Show <select id="cartShow">
+      <option value="all">All cartridges</option><option value="camera">In camera (C1–C7)</option>
+      <option value="listed">In a playlist</option><option value="unlisted">Not in a playlist</option>
+    </select></label>
+    <label class="hint">Sort <select id="cartSort">
+      <option value="new">Newest</option><option value="name">Name</option><option value="sim">Film simulation</option><option value="slot">Camera slot</option>
+    </select></label>
+  </div>
+  <div class="cart-list" id="cartList"></div>
+</section>
+
+<!-- ============ LINEUPS (retired; playlists are now tags) ============ -->
 <section id="lineups" class="view">
   <div class="lib-bar">
     <span class="hint">Scenario</span>
@@ -423,7 +456,7 @@
   <div id="pastePreview" style="max-height:42vh;overflow:auto;margin-top:10px"></div>
   <div class="foot">
     <label class="hint"><input type="checkbox" id="pasteRep"> Add to my current repertoire (fills empty C1–C7 slots)</label>
-    <label class="hint" style="margin-right:auto"><input type="checkbox" id="pasteAutoLineup" checked> Auto-fill empty playlist slots</label>
+    <input type="checkbox" id="pasteAutoLineup" hidden><span style="margin-right:auto"></span>
     <button class="btn" id="pasteCancel">Cancel</button>
     <button class="btn primary" id="pasteAdd" disabled>Add to library</button>
   </div>

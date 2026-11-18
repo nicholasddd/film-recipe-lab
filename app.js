@@ -478,11 +478,12 @@
 
   // ---------------- library ----------------
   function renderLibrary() {
-    const counts = { All: store.recipes.length };
+    if ($('cartridges').classList.contains('active')) renderCartridges();
+    const counts = { All: store.recipes.filter((r) => r.scenarios.length).length };
     store.recipes.forEach((r) => r.scenarios.forEach((s) => (counts[s] = (counts[s] || 0) + 1)));
     const chips = $('libChips');
     chips.innerHTML = '';
-    ['All', ...store.scenarios, 'Unsorted'].forEach((s) => {
+    ['All', ...store.scenarios].forEach((s) => {
       const n = s === 'Unsorted' ? store.recipes.filter((r) => !r.scenarios.length).length : counts[s] || 0;
       if (s === 'Unsorted' && !n) return;
       const b = document.createElement('button');
@@ -495,7 +496,7 @@
 
     const q = $('libSearch').value.trim().toLowerCase();
     let list = store.recipes.filter((r) =>
-      (state.libFilter === 'All' || (state.libFilter === 'Unsorted' ? !r.scenarios.length : r.scenarios.includes(state.libFilter))) &&
+      (state.libFilter === 'All' ? r.scenarios.length > 0 : r.scenarios.includes(state.libFilter)) &&
       (!q || [r.name, r.aka, r.notes, r.source, FE.SIMS[r.recipe.sim].name].join(' ').toLowerCase().includes(q)));
     const sort = $('libSort').value;
     list.sort(sort === 'name' ? (a, b) => a.name.localeCompare(b.name)
@@ -511,7 +512,7 @@
     stopOrbit();
     orbit.innerHTML = '';
     grid.innerHTML = '';
-    if (!list.length) { grid.innerHTML = '<div class="empty">No recipes here yet. Paste some in, or save one from the Editor.</div>'; return; }
+    if (!list.length) { grid.innerHTML = '<div class="empty">No cartridges in this playlist yet. Tag cartridges with a playlist in the Library.</div>'; return; }
     list.forEach((r) => grid.appendChild(pinCard(r)));
   }
 
@@ -578,13 +579,13 @@
   function renderOrbit(list) {
     const root = $('libOrbit');
     root.innerHTML = '';
-    const groups = (state.libFilter === 'All' ? [...store.scenarios, 'Unsorted'] : [state.libFilter])
+    const groups = (state.libFilter === 'All' ? store.scenarios : [state.libFilter])
       .map((s) => [s, list.filter((r) => (s === 'Unsorted' ? !r.scenarios.length : r.scenarios.includes(s)))])
       .filter(([, items]) => items.length);
     if (ringObserver) ringObserver.disconnect();
     ringObserver = new IntersectionObserver((entries) => entries.forEach((e) => { const rg = e.target._ring; if (rg) rg.visible = e.isIntersecting; }));
     activeRings = [];
-    if (!groups.length) { root.innerHTML = '<div class="empty">No recipes here yet. Paste some in, or save one from the Editor.</div>'; stopOrbit(); return; }
+    if (!groups.length) { root.innerHTML = '<div class="empty">No cartridges in this playlist yet. Tag cartridges with a playlist in the Library.</div>'; stopOrbit(); return; }
 
     groups.forEach(([s, items], gi) => {
       const n = items.length, step = 360 / n;
@@ -645,18 +646,20 @@
       const dx = e.clientX - ring.drag.last;
       ring.drag.last = e.clientX;
       if (!ring.moved && Math.abs(e.clientX - ring.drag.x) > 5) { ring.moved = true; stage.setPointerCapture(e.pointerId); stage.classList.add('dragging'); }
-      if (ring.moved) { ring.theta += dx * 0.28; ring.vel = dx * 0.28; }
+      const g = ring.dragGain || 0.28;
+      if (ring.moved) { ring.theta += dx * g; ring.vel = dx * g; }
     };
     stage.onpointerup = stage.onpointercancel = () => {
       if (ring.drag && !ring.moved) ring.vel = 0;
-      else if (Math.abs(ring.vel) < 0.3) ring.snap = Math.round(ring.theta / ring.step) * ring.step;
+      else if (Math.abs(ring.vel) < 0.3) { ring.snap = Math.round(ring.theta / ring.step) * ring.step; ring.pauseUntil = performance.now() + 2500; }
       ring.drag = null;
       stage.classList.remove('dragging');
     };
     stage.onmouseenter = () => (ring.hover = true);
     stage.onmouseleave = () => (ring.hover = false);
   }
-  const rotateRingTo = (ring, i) => { ring.vel = 0; ring.snap = ring.theta + angDelta(-i * ring.step, ring.theta); };
+  // spring to a chosen card, then hold there a moment before cruising again
+  const rotateRingTo = (ring, i) => { ring.snap = ring.theta + angDelta(-i * ring.step, ring.theta); ring.pauseUntil = performance.now() + 4000; };
   // shrink wide rings so the whole carousel fits the window
   let homeRing = null;
   const allRings = () => (homeRing ? [...activeRings, homeRing] : activeRings);
@@ -668,16 +671,23 @@
   function orbitTick() {
     for (const ring of allRings()) {
       if (!ring.visible) continue;
+      const prevTheta = ring.theta;
       if (!ring.drag) {
         if (ring.snap != null) {
-          ring.theta += (ring.snap - ring.theta) * 0.14;
-          if (Math.abs(ring.snap - ring.theta) < 0.05) { ring.theta = ring.snap; ring.snap = null; }
-        } else if (Math.abs(ring.vel) > 0.05) {
+          // underdamped spring: a little overshoot, then settle
+          ring.vel += (ring.snap - ring.theta) * 0.06;
+          ring.vel *= 0.8;
           ring.theta += ring.vel;
-          ring.vel *= 0.94;
-          if (Math.abs(ring.vel) <= 0.05) { ring.vel = 0; ring.snap = Math.round(ring.theta / ring.step) * ring.step; }
-        } else if (!ring.hover && !reduceMotion && !ring.noAutoSpin) ring.theta -= 0.05;
+          if (Math.abs(ring.snap - ring.theta) < 0.05 && Math.abs(ring.vel) < 0.05) { ring.theta = ring.snap; ring.snap = null; ring.vel = 0; }
+        } else {
+          // a fling coasts and eases back to cruising speed; hovering or a recent pick holds it still
+          const held = ring.hover || reduceMotion || performance.now() < (ring.pauseUntil || 0);
+          const cruise = held ? 0 : -(ring.autoSpeed ?? 0.05);
+          ring.vel += (cruise - ring.vel) * (Math.abs(ring.vel - cruise) > 0.6 ? 0.022 : 0.05);
+          ring.theta += ring.vel;
+        }
       }
+      if (ring.lean != null) ring.lean += (Math.max(-16, Math.min(16, -(ring.theta - prevTheta) * 2.4)) - ring.lean) * 0.12;
       ring.el.style.transform = `scale(${ring.k}) translateZ(${-ring.R}px) rotateY(${ring.theta}deg)`;
       if (ring.reflEl) ring.reflEl.style.transform = `translateY(${ring.cardH * ring.k + 14}px) scale(${ring.k}) scaleY(-1) translateZ(${-ring.R}px) rotateY(${ring.theta}deg)`;
       const fi = frontIndex(ring);
@@ -687,6 +697,11 @@
         c.style.setProperty('--shade', (0.3 + 0.7 * f).toFixed(2));
         c.style.setProperty('--sheen', (50 - a * 0.6).toFixed(1));
         c.classList.toggle('back', f < 0.45); // facing away: hide its (mirrored) text
+        if (ring.lean != null) {
+          const t = `rotateY(${i * ring.step}deg) translateZ(${ring.R}px) rotateY(${ring.lean.toFixed(2)}deg)`;
+          c.style.transform = t;
+          if (ring.reflEl && ring.reflEl.children[i]) ring.reflEl.children[i].style.transform = t;
+        }
       });
       if (fi !== ring.fi) {
         if (ring.cards[ring.fi]) ring.cards[ring.fi].classList.remove('front');
@@ -716,13 +731,13 @@
     persist(); syncControls(); renderLibrary(); renderLineups(); renderQuickLineup();
   }
   function addScenario() {
-    const name = (prompt('New scenario name (e.g. Desert, Autumn, Street):') || '').trim();
+    const name = (prompt('New playlist name (e.g. Desert, Autumn, Street):') || '').trim();
     if (!name || store.scenarios.includes(name)) return;
     store.scenarios.push(name);
     persist(); renderLibrary(); renderLineups(); renderQuickLineup();
   }
   function removeScenario(s) {
-    if (!confirm(`Remove scenario "${s}"? Recipes stay in the library, and its lineup will be deleted.`)) return;
+    if (!confirm(`Remove the "${s}" playlist? Its cartridges stay in your Library.`)) return;
     store.scenarios = store.scenarios.filter((x) => x !== s);
     store.recipes.forEach((r) => (r.scenarios = r.scenarios.filter((x) => x !== s)));
     delete store.lineups[s];
@@ -839,17 +854,18 @@
     if (!state.lineupScenario) state.lineupScenario = store.scenarios[0];
     el.innerHTML = '';
     const sel = document.createElement('select');
-    store.scenarios.forEach((s) => sel.add(new Option(s + ' lineup', s)));
+    store.scenarios.forEach((s) => sel.add(new Option(s + ' playlist', s)));
     sel.value = state.lineupScenario;
     sel.onchange = () => { state.lineupScenario = sel.value; renderQuickLineup(); renderLineups(); };
     el.appendChild(sel);
-    getLineup(state.lineupScenario).forEach((id, i) => {
-      const r = id && store.recipes.find((x) => x.id === id);
+    const inList = store.recipes.filter((r) => r.scenarios.includes(state.lineupScenario));
+    if (!inList.length) el.insertAdjacentHTML('beforeend', '<span class="hint">No cartridges in this playlist yet.</span>');
+    inList.forEach((r, i) => {
       const b = document.createElement('button');
-      b.className = 'btn slot' + (r && r.id === state.loadedId ? ' on' : '');
-      b.innerHTML = `<b>${String(i + 1).padStart(2, '0')}</b>${r ? esc(r.name) : '<span class="hint">empty</span>'}`;
-      b.title = r ? r.name : 'Assign in Lineups tab';
-      b.onclick = () => (r ? (loadRecipe(r), renderQuickLineup()) : (switchTab('lineups'), pickForSlot(i)));
+      b.className = 'btn slot' + (r.id === state.loadedId ? ' on' : '');
+      b.innerHTML = `<b>${String(i + 1).padStart(2, '0')}</b>${esc(r.aka || r.name)}`;
+      b.title = r.name;
+      b.onclick = () => { loadRecipe(r); renderQuickLineup(); };
       el.appendChild(b);
     });
   }
@@ -955,6 +971,48 @@
     return msg;
   }
 
+  // ---------------- Library page: every saved cartridge, in a playlist or not ----------------
+  function renderCartridges() {
+    const rp = getRepertoire();
+    const q = $('cartSearch').value.trim().toLowerCase();
+    const show = $('cartShow').value, sort = $('cartSort').value;
+    let list = store.recipes.filter((r) => {
+      if (show === 'camera' && !rp.includes(r.id)) return false;
+      if (show === 'listed' && !r.scenarios.length) return false;
+      if (show === 'unlisted' && r.scenarios.length) return false;
+      return !q || [r.name, r.aka, r.notes, r.source, FE.SIMS[r.recipe.sim].name, ...r.scenarios].join(' ').toLowerCase().includes(q);
+    });
+    const slotOf = (r) => rp.indexOf(r.id);
+    list.sort(sort === 'name' ? (a, b) => (a.aka || a.name).localeCompare(b.aka || b.name)
+      : sort === 'sim' ? (a, b) => FE.SIMS[a.recipe.sim].name.localeCompare(FE.SIMS[b.recipe.sim].name) || a.name.localeCompare(b.name)
+      : sort === 'slot' ? (a, b) => ((slotOf(a) + 1 || 99) - (slotOf(b) + 1 || 99)) || a.name.localeCompare(b.name)
+      : (a, b) => (b.updated || b.created) - (a.updated || a.created));
+    $('cartCount').textContent = `${store.recipes.length} cartridge${store.recipes.length === 1 ? '' : 's'} saved · ${rp.filter(Boolean).length} in camera · ${store.recipes.filter((r) => !r.scenarios.length).length} not in a playlist`;
+    const root = $('cartList');
+    root.innerHTML = '';
+    if (!list.length) { root.innerHTML = '<div class="empty">No cartridges match.</div>'; return; }
+    list.forEach((r) => {
+      const [code, title] = splitName(r.name), slot = slotOf(r);
+      const row = document.createElement('article');
+      row.className = 'crow';
+      const cv = thumbCanvas(r.recipe);
+      cv.className = 'crow-img';
+      cv.title = 'Try in simulator';
+      cv.onclick = () => loadRecipe(r);
+      row.appendChild(cv);
+      row.insertAdjacentHTML('beforeend', `
+        <div class="crow-main display"><b>${esc(r.aka || title)}</b><small>${code ? esc(code) + ' · ' : ''}${esc(FE.SIMS[r.recipe.sim].name)}${r.source ? ' · ' + esc((r.source.match(/^https?:\/\/(?:www\.)?([^/]+)/) || [])[1] || '') : ''}</small></div>
+        <div class="crow-slot">${slot >= 0 ? `<span class="slot-chip on">C${slot + 1}</span>` : ''}</div>
+        <div class="crow-tags">${r.scenarios.length ? r.scenarios.map((sc) => `<span>${esc(sc)}</span>`).join('') : '<em>Not in a playlist</em>'}</div>
+        <div class="crow-act"><button class="btn small" data-a="sim">Try</button><button class="btn small" data-a="edit">Edit</button><button class="btn small" data-a="dup">Duplicate</button><button class="btn small danger" data-a="del">Delete</button></div>`);
+      row.querySelector('[data-a=sim]').onclick = () => loadRecipe(r);
+      row.querySelector('[data-a=edit]').onclick = () => openForm({ entry: r });
+      row.querySelector('[data-a=dup]').onclick = () => { store.recipes.push({ ...r, id: uid(), name: r.name + ' copy', scenarios: [...r.scenarios], recipe: { ...r.recipe }, created: Date.now(), updated: undefined }); persist(); renderCartridges(); };
+      row.querySelector('[data-a=del]').onclick = () => deleteRecipe(r);
+      root.appendChild(row);
+    });
+  }
+
   // ---------------- home: current repertoire + playlists ----------------
   const getRepertoire = () => {
     if (!store.repertoire) store.repertoire = [];
@@ -1005,7 +1063,8 @@
     const R = Math.max(220, (n * (HOME_W + 44)) / (2 * Math.PI));
     const first = homeRing ? null : Math.max(0, items.findIndex(Boolean));
     homeRing = Object.assign(homeRing || { theta: -first * step, vel: 0, snap: null }, {
-      n, step, R, items, cardW: HOME_W, drag: null, hover: false, fi: -1, visible: true, noAutoSpin: true,
+      n, step, R, items, cardW: HOME_W, drag: null, hover: false, fi: -1, visible: true,
+      autoSpeed: 0.32, dragGain: 0.42, lean: (homeRing && homeRing.lean) || 0,
     });
     const ring = homeRing, stage = $('homeStage'), ringEl = $('homeRing');
     stage.style.height = Math.round(HOME_H * 1.3 + R * 0.42 + 30 + HOME_H * 0.5) + 'px';
@@ -1065,15 +1124,15 @@
     const root = $('homePlaylists');
     root.innerHTML = '';
     const lists = store.scenarios
-      .map((s) => [s, getLineup(s).map((id) => id && store.recipes.find((x) => x.id === id)).filter(Boolean)])
+      .map((s) => [s, store.recipes.filter((r) => r.scenarios.includes(s))])
       .filter(([, items]) => items.length);
-    if (!lists.length) root.innerHTML = '<div class="empty">No playlists yet. Build them on the Playlists page, or use Auto-fill there.</div>';
+    if (!lists.length) root.innerHTML = '<div class="empty">No playlists yet. Tag cartridges with a playlist from the Library.</div>';
     lists.forEach(([s, items], gi) => {
       const sec = document.createElement('section');
       sec.className = 'pl-section display';
       sec.innerHTML = `<div class="pl-head"><span class="idx">${String(gi + 1).padStart(2, '0')}</span><h2>${esc(s)}</h2>
         <span class="cnt">${items.length} recipe${items.length === 1 ? '' : 's'}</span><button class="btn small">Edit</button></div><div class="pl-strip"></div>`;
-      sec.querySelector('.btn').onclick = () => { state.lineupScenario = s; switchTab('lineups'); };
+      sec.querySelector('.btn').onclick = () => { state.libFilter = s; switchTab('library'); };
       const strip = sec.querySelector('.pl-strip');
       items.forEach((r) => { const el = editorialCard(r); el.querySelector('.pin-actions').remove(); strip.appendChild(el); });
       root.appendChild(sec);
@@ -1219,7 +1278,7 @@
   }
 
   // ---------------- tabs + wiring ----------------
-  const PAGES = { home: 'home', editor: 'simulator', library: 'library', lineups: 'playlists', calibrate: 'calibrate' };
+  const PAGES = { home: 'home', library: 'playlists', cartridges: 'library', editor: 'simulator', calibrate: 'calibrate' };
   const pageFromHash = () => Object.keys(PAGES).find((k) => '#' + PAGES[k] === location.hash);
   window.addEventListener('hashchange', () => { const t = pageFromHash(); if (t) switchTab(t); });
   function switchTab(t) {
@@ -1228,6 +1287,7 @@
     document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === t));
     window.scrollTo(0, 0);
     if (t === 'home') renderHome();
+    if (t === 'cartridges') renderCartridges();
     if (t === 'library') renderLibrary();
     else if (t !== 'home') stopOrbit();
     if (t === 'lineups') renderLineups();
@@ -1256,6 +1316,9 @@
   $('pickCancel').onclick = () => $('pickDlg').close();
   $('libSearch').oninput = renderLibrary;
   $('libSort').onchange = renderLibrary;
+  $('cartSearch').oninput = renderCartridges;
+  $('cartShow').onchange = renderCartridges;
+  $('cartSort').onchange = renderCartridges;
   const setLibMode = (m) => { state.libMode = m; try { localStorage.setItem('filmRecipeLab.libMode', m); } catch (e) { /* ignore */ } renderLibrary(); };
   $('modeGrid').onclick = () => setLibMode('grid');
   $('modeOrbit').onclick = () => setLibMode('orbit');
