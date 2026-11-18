@@ -640,17 +640,23 @@
   const sim3 = (r) => RT.SIM_CODES[r.recipe.sim];
   // drag to spin; pointer capture only once it's clearly a drag, so plain clicks reach the cards
   function attachRingDrag(stage, ring) {
-    stage.onpointerdown = (e) => { ring.drag = { x: e.clientX, last: e.clientX }; ring.moved = false; ring.vel = 0; ring.snap = null; };
+    stage.onpointerdown = (e) => { ring.drag = { x: e.clientX, y: e.clientY, last: e.clientX, lastY: e.clientY }; ring.moved = false; ring.vel = 0; ring.pvel = 0; ring.snap = null; };
     stage.onpointermove = (e) => {
       if (!ring.drag) return;
-      const dx = e.clientX - ring.drag.last;
+      const dx = e.clientX - ring.drag.last, dy = e.clientY - ring.drag.lastY;
       ring.drag.last = e.clientX;
-      if (!ring.moved && Math.abs(e.clientX - ring.drag.x) > 5) { ring.moved = true; stage.setPointerCapture(e.pointerId); stage.classList.add('dragging'); }
+      ring.drag.lastY = e.clientY;
+      const dist = ring.orbit ? Math.hypot(e.clientX - ring.drag.x, e.clientY - ring.drag.y) : Math.abs(e.clientX - ring.drag.x);
+      if (!ring.moved && dist > 5) { ring.moved = true; stage.setPointerCapture(e.pointerId); stage.classList.add('dragging'); }
+      if (!ring.moved) return;
       const g = ring.dragGain || 0.28;
-      if (ring.moved) { ring.theta += dx * g; ring.vel = dx * g; }
+      ring.theta += dx * g;
+      ring.vel = dx * g;
+      if (ring.orbit) { ring.pitch = clampPitch(ring.pitch - dy * g); ring.pvel = -dy * g; }
     };
     stage.onpointerup = stage.onpointercancel = () => {
-      if (ring.drag && !ring.moved) ring.vel = 0;
+      if (ring.drag && !ring.moved) { ring.vel = 0; ring.pvel = 0; }
+      else if (ring.orbit) { /* glide, then stay where it was left */ }
       else if (Math.abs(ring.vel) < 0.3) { const fo = ring.focus || 0; ring.snap = fo + Math.round((ring.theta - fo) / ring.step) * ring.step; ring.pauseUntil = performance.now() + 2500; }
       ring.drag = null;
       stage.classList.remove('dragging');
@@ -659,6 +665,8 @@
     stage.onmouseleave = () => (ring.hover = false);
   }
   // spring to a chosen card, then hold there a moment before cruising again
+  const PITCH_MAX = 40;
+  const clampPitch = (p) => Math.max(-PITCH_MAX, Math.min(PITCH_MAX, p));
   const rotateRingTo = (ring, i) => { ring.snap = ring.theta + angDelta((ring.focus || 0) - i * ring.step, ring.theta); ring.pauseUntil = performance.now() + 4000; };
   // shrink wide rings so the whole carousel fits the window
   let homeRing = null;
@@ -679,6 +687,14 @@
           ring.vel *= 0.8;
           ring.theta += ring.vel;
           if (Math.abs(ring.snap - ring.theta) < 0.05 && Math.abs(ring.vel) < 0.05) { ring.theta = ring.snap; ring.snap = null; ring.vel = 0; }
+        } else if (ring.orbit) {
+          // camera orbit: glide with friction after a drag, then hold still
+          ring.theta += ring.vel;
+          ring.pitch = clampPitch(ring.pitch + (ring.pvel || 0));
+          ring.vel *= 0.9;
+          ring.pvel = (ring.pvel || 0) * 0.9;
+          if (Math.abs(ring.vel) < 0.01) ring.vel = 0;
+          if (Math.abs(ring.pvel) < 0.01) ring.pvel = 0;
         } else {
           // a fling coasts and eases back to cruising speed; hovering or a recent pick holds it still
           const held = ring.hover || reduceMotion || performance.now() < (ring.pauseUntil || 0);
@@ -693,7 +709,8 @@
         ring.tiltX = (ring.tiltX || 0) + (Math.max(-10, Math.min(10, Math.abs(dv) * 1.6)) - (ring.tiltX || 0)) * 0.1;
         ring.bank = (ring.bank || 0) + (Math.max(-5, Math.min(5, -dv * 0.9)) - (ring.bank || 0)) * 0.08;
       }
-      ring.el.style.transform = `scale(${ring.k}) rotateZ(${(ring.bank || 0).toFixed(2)}deg) translateZ(${-(ring.zPush ?? ring.R)}px) rotateY(${ring.theta}deg)`;
+      // rotating about the ring's own centre = the camera moving over a sphere around that centre
+      ring.el.style.transform = `scale(${ring.k}) rotateZ(${(ring.bank || 0).toFixed(2)}deg) translateZ(${-(ring.zPush ?? ring.R)}px) rotateX(${(ring.pitch || 0).toFixed(2)}deg) rotateY(${ring.theta}deg)`;
       if (ring.reflEl) ring.reflEl.style.transform = `translateY(${ring.cardH * ring.k + 14}px) scale(${ring.k}) scaleY(-1) translateZ(${-ring.R}px) rotateY(${ring.theta}deg)`;
       const fi = frontIndex(ring);
       ring.cards.forEach((c, i) => {
@@ -1071,11 +1088,11 @@
     const first = homeRing ? null : Math.max(0, slots.findIndex(Boolean));
     homeRing = Object.assign(homeRing || { theta: FOCUS - first * step, vel: 0, snap: null }, {
       n, step, R, items, cardW: HOME_W, drag: null, hover: false, fi: -1, visible: true,
-      autoSpeed: 0.3, dragGain: 0.38, lean: (homeRing && homeRing.lean) || 0,
-      focus: FOCUS, cardTurn: -90, zPush: 40, fadeFront: true, shadeMin: 0.45,
+      orbit: true, pitch: homeRing ? homeRing.pitch : -6, pvel: 0, dragGain: 0.32, lean: null,
+      focus: FOCUS, cardTurn: -90, zPush: 420, fadeFront: true, shadeMin: 0.45, // zPush: camera distance from the ring centre
     });
     const ring = homeRing, stage = $('homeStage'), ringEl = $('homeRing');
-    stage.style.height = Math.round(HOME_H * 1.75) + 'px';
+    stage.style.height = Math.round(HOME_H * 1.65) + 'px';
     ring.el = ringEl;
     ring.stage = stage;
     ringEl.innerHTML = '';
@@ -1375,6 +1392,7 @@
   document.addEventListener('keydown', (e) => {
     if (!homeRing || !$('home').classList.contains('active') || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); rotateRingTo(homeRing, (frontIndex(homeRing) + (e.key === 'ArrowRight' ? 1 : -1) + homeRing.n) % homeRing.n); }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); homeRing.pvel = e.key === 'ArrowUp' ? -1.6 : 1.6; }
   });
   document.addEventListener('keyup', (e) => { if (e.code === 'Space' && state.showOriginal) { state.showOriginal = false; draw(); } });
   window.addEventListener('calibration-changed', () => {

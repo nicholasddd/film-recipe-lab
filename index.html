@@ -151,7 +151,7 @@
   .home-ring .ring-stage { width: 100%; perspective-origin: 50% -30%; }
   /* cartridge: glass face, chrome edge (stacked layers), metal back */
   /* eye-level camera, fanned cards (see .hcard transform in app.js) */
-  .home-ring .ring-stage { perspective: 900px; perspective-origin: 50% 50%; }
+  .home-ring .ring-stage { perspective: 1100px; perspective-origin: 50% 50%; touch-action: none; }
   .home-ring .ring { top: 50%; }
   .hcard { width: 180px; height: 240px; left: -90px; top: -120px; border-radius: 5px; overflow: visible; background: none; transform-style: preserve-3d; filter: none; }
   .hc-face, .hc-back, .hc-edge { position: absolute; inset: 0; border-radius: 5px; filter: brightness(var(--shade, 1)); opacity: var(--op, 1); }
@@ -195,6 +195,18 @@
   .cd-settings dd { margin: 0; }
   .cd-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .pl-section { margin-top: 36px; }
+  /* home hero: title on the left, the camera on the right */
+  .hero-cam-row { align-items: center; flex-wrap: nowrap; }
+  .hero-text { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .hero-text .hint { max-width: 420px; margin: 4px 0 0; }
+  .hero-cam { margin: 0; flex: 0 1 460px; max-width: 40%; min-width: 0; position: relative; }
+  .hero-text { flex: 1 1 auto; }
+  .hero-cam-row h1 { font-size: clamp(46px, 7.4vw, 132px); }
+  .hero-cam img { display: block; width: 100%; height: auto; -webkit-mask-image: radial-gradient(ellipse 62% 66% at 52% 52%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 62% 66% at 52% 52%, #000 55%, transparent 100%); }
+  .hero-cam figcaption { display: flex; justify-content: space-between; gap: 10px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: -14px; padding: 0 18px; }
+  .hero-cam .credit { text-transform: none; letter-spacing: 0; opacity: .75; }
+  .hero-cam a { color: inherit; }
+  @media (max-width: 760px) { .hero-cam-row { flex-wrap: wrap; } .hero-cam { flex-basis: 100%; max-width: 100%; } }
   .cart-list { display: flex; flex-direction: column; gap: 8px; }
   .crow { display: grid; grid-template-columns: 96px minmax(0, 1.4fr) 56px minmax(0, 1.2fr) auto; align-items: center; gap: 14px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
   .crow-img { width: 96px; height: 64px; object-fit: cover; border-radius: 3px; cursor: pointer; display: block; }
@@ -300,15 +312,20 @@
 
 <!-- ============ HOME ============ -->
 <section id="home" class="view active">
-  <div class="home-hero display">
-    <div>
+  <div class="home-hero hero-cam-row display">
+    <div class="hero-text">
       <div class="kicker">On camera now · <span id="repCount"></span></div>
       <h1>Current<br>repertoire</h1>
+      <p class="hint">The cartridges loaded in your camera's custom settings, C1–C7. Drag to move around the carousel, or use the arrow keys.</p>
+      <div class="hero-btns"><button class="btn primary" id="homeAdd">Add cartridge</button> <button class="btn" id="homePaste">Paste text</button> <button class="btn" id="homeSim">Open simulator</button></div>
     </div>
-    <div class="home-actions">
-      <p class="hint">The cartridges loaded in your camera's custom settings, C1–C7. Drag or use ← → to turn the carousel. Click the front cartridge to try it in the simulator.</p>
-      <div><button class="btn primary" id="homeAdd">Add cartridge</button> <button class="btn" id="homePaste">Paste text</button> <button class="btn" id="homeSim">Open simulator</button></div>
-    </div>
+    <figure class="hero-cam">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Fujifilm_X-T30_II.jpg/960px-Fujifilm_X-T30_II.jpg"
+           alt="Fujifilm X-T30 II with an 18–55mm lens on a dark reflective surface" width="960" height="640" loading="eager">
+      <figcaption><span>Fujifilm X-T30 II</span>
+        <span class="credit">Photo: <a href="https://commons.wikimedia.org/wiki/File:Fujifilm_X-T30_II.jpg" target="_blank" rel="noopener">Henry Söderlund</a>,
+        <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noopener">CC BY 2.0</a></span></figcaption>
+    </figure>
   </div>
   <div class="home-ring">
     <div class="ring-stage" id="homeStage"><div class="ring" id="homeRefl" aria-hidden="true"></div><div class="refl-fade" id="homeFade"></div><div class="ring" id="homeRing"></div></div>
