@@ -14,6 +14,7 @@ window.MY_RECIPES = {
       id: 'mine-c3-shotbygreg',
       slot: 3,
       aka: 'Shotbygreg',
+      scenarios: ['Winter Pilgrimage 2026', 'Beach'],
       notes: 'Clarity is sometimes greyed out on the camera.',
       recipe: {
         sim: 'classicNeg',
@@ -28,7 +29,7 @@ window.MY_RECIPES = {
       id: 'mine-c4-seagull-beach',
       slot: 4,
       aka: 'Seagull Beach',
-      scenarios: ['Beach'],
+      scenarios: ['Beach', 'European Summer', 'Dolomites 2027'],
       notes: 'Clarity is sometimes greyed out on the camera.',
       recipe: {
         sim: 'classicNeg',
@@ -43,7 +44,7 @@ window.MY_RECIPES = {
       id: 'mine-c6-snowy-day',
       slot: 6,
       aka: 'Snowy Day',
-      scenarios: [],
+      scenarios: ['Winter Pilgrimage 2026', 'Dolomites 2027'],
       notes: 'Clarity is sometimes greyed out on the camera.',
       recipe: {
         sim: 'classicChrome',
@@ -57,6 +58,7 @@ window.MY_RECIPES = {
     {
       id: 'mine-california-hues',
       aka: 'California Hues',
+      scenarios: ['Beach', 'European Summer', 'Rainy Day'],
       recipe: {
         sim: 'classicNeg',
         grain: 2, grainSize: 'large',
@@ -69,7 +71,7 @@ window.MY_RECIPES = {
     {
       id: 'mine-snowski',
       aka: 'Snowski',
-      scenarios: [],
+      scenarios: ['Winter Pilgrimage 2026', 'Dolomites 2027'],
       notes: 'Grain is to taste (Weak, Small is the starting point).',
       recipe: {
         sim: 'classicNeg',
@@ -83,6 +85,7 @@ window.MY_RECIPES = {
     {
       id: 'mine-portra-dol-sol',
       aka: 'Portra Dol Sol',
+      scenarios: ['Beach', 'European Summer'],
       recipe: {
         sim: 'classicChrome',
         grain: 0,
@@ -95,6 +98,7 @@ window.MY_RECIPES = {
     {
       id: 'mine-nostalgic-haze',
       aka: 'Nostalgic Haze',
+      scenarios: [],
       notes: 'Uses Nostalgic Neg., which the X-T30 II does not have: simulator only.',
       recipe: {
         sim: 'nostalgicNeg',
@@ -108,6 +112,7 @@ window.MY_RECIPES = {
     {
       id: 'mine-crimson-shift',
       aka: 'Crimson Shift',
+      scenarios: ['Beach', 'European Summer', 'Rainy Day', 'Dolomites 2027'],
       ec: '-1/3',
       notes: 'Strong reds and oranges with little yellow: warmth comes from Red +3, Blue only -2. Shoot 0 to -1/3 so oranges stay saturated.',
       recipe: {
@@ -122,7 +127,7 @@ window.MY_RECIPES = {
     {
       id: 'mine-plain-vanilla-indoor',
       aka: 'Plain Vanilla Indoor',
-      scenarios: [],
+      scenarios: ['Winter Pilgrimage 2026', 'Rainy Day'],
       recipe: {
         sim: 'classicChrome',
         grain: 1, grainSize: 'small',
