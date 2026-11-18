@@ -625,23 +625,7 @@
       next.onclick = () => go(1);
       open.onclick = () => loadRecipe(ring.items[frontIndex(ring)]);
 
-      // drag to spin; pointer capture only once it's clearly a drag, so plain clicks reach the cards
-      stage.onpointerdown = (e) => { ring.drag = { x: e.clientX, last: e.clientX }; ring.moved = false; ring.vel = 0; ring.snap = null; };
-      stage.onpointermove = (e) => {
-        if (!ring.drag) return;
-        const dx = e.clientX - ring.drag.last;
-        ring.drag.last = e.clientX;
-        if (!ring.moved && Math.abs(e.clientX - ring.drag.x) > 5) { ring.moved = true; stage.setPointerCapture(e.pointerId); stage.classList.add('dragging'); }
-        if (ring.moved) { ring.theta += dx * 0.28; ring.vel = dx * 0.28; }
-      };
-      stage.onpointerup = stage.onpointercancel = () => {
-        if (ring.drag && !ring.moved) ring.vel = 0;
-        else if (Math.abs(ring.vel) < 0.3) ring.snap = Math.round(ring.theta / step) * step;
-        ring.drag = null;
-        stage.classList.remove('dragging');
-      };
-      stage.onmouseenter = () => (ring.hover = true);
-      stage.onmouseleave = () => (ring.hover = false);
+      attachRingDrag(stage, ring);
 
       block._ring = ring;
       ring.stage = stage;
@@ -653,14 +637,36 @@
     if (!orbitRAF) orbitRAF = requestAnimationFrame(orbitTick);
   }
   const sim3 = (r) => RT.SIM_CODES[r.recipe.sim];
+  // drag to spin; pointer capture only once it's clearly a drag, so plain clicks reach the cards
+  function attachRingDrag(stage, ring) {
+    stage.onpointerdown = (e) => { ring.drag = { x: e.clientX, last: e.clientX }; ring.moved = false; ring.vel = 0; ring.snap = null; };
+    stage.onpointermove = (e) => {
+      if (!ring.drag) return;
+      const dx = e.clientX - ring.drag.last;
+      ring.drag.last = e.clientX;
+      if (!ring.moved && Math.abs(e.clientX - ring.drag.x) > 5) { ring.moved = true; stage.setPointerCapture(e.pointerId); stage.classList.add('dragging'); }
+      if (ring.moved) { ring.theta += dx * 0.28; ring.vel = dx * 0.28; }
+    };
+    stage.onpointerup = stage.onpointercancel = () => {
+      if (ring.drag && !ring.moved) ring.vel = 0;
+      else if (Math.abs(ring.vel) < 0.3) ring.snap = Math.round(ring.theta / ring.step) * ring.step;
+      ring.drag = null;
+      stage.classList.remove('dragging');
+    };
+    stage.onmouseenter = () => (ring.hover = true);
+    stage.onmouseleave = () => (ring.hover = false);
+  }
+  const rotateRingTo = (ring, i) => { ring.vel = 0; ring.snap = ring.theta + angDelta(-i * ring.step, ring.theta); };
   // shrink wide rings so the whole carousel fits the window
+  let homeRing = null;
+  const allRings = () => (homeRing ? [...activeRings, homeRing] : activeRings);
   function fitRings() {
-    for (const ring of activeRings) ring.k = Math.min(1, (ring.stage.clientWidth - 24) / (2 * ring.R + CARD_W * 1.4));
+    for (const ring of allRings()) ring.k = Math.min(1, (ring.stage.clientWidth - 24) / (2 * ring.R + (ring.cardW || CARD_W) * 1.4));
   }
   window.addEventListener('resize', fitRings);
 
   function orbitTick() {
-    for (const ring of activeRings) {
+    for (const ring of allRings()) {
       if (!ring.visible) continue;
       if (!ring.drag) {
         if (ring.snap != null) {
@@ -670,21 +676,25 @@
           ring.theta += ring.vel;
           ring.vel *= 0.94;
           if (Math.abs(ring.vel) <= 0.05) { ring.vel = 0; ring.snap = Math.round(ring.theta / ring.step) * ring.step; }
-        } else if (!ring.hover && !reduceMotion) ring.theta -= 0.05;
+        } else if (!ring.hover && !reduceMotion && !ring.noAutoSpin) ring.theta -= 0.05;
       }
       ring.el.style.transform = `scale(${ring.k}) translateZ(${-ring.R}px) rotateY(${ring.theta}deg)`;
       const fi = frontIndex(ring);
       ring.cards.forEach((c, i) => {
         const f = (Math.cos(((i * ring.step + ring.theta) * Math.PI) / 180) + 1) / 2; // 1 front, 0 back
         c.style.filter = `brightness(${(0.3 + 0.7 * f).toFixed(2)})`;
+        c.classList.toggle('back', f < 0.45); // facing away: hide its (mirrored) text
       });
       if (fi !== ring.fi) {
         if (ring.cards[ring.fi]) ring.cards[ring.fi].classList.remove('front');
         ring.cards[fi].classList.add('front');
         ring.fi = fi;
-        const r = ring.items[fi];
-        ring.cap.querySelector('b').textContent = r.name;
-        ring.cap.querySelector('small').textContent = `${r.aka ? 'aka ' + r.aka + ' · ' : ''}${FE.SIMS[r.recipe.sim].name}`;
+        if (ring.onFront) ring.onFront(fi);
+        else {
+          const r = ring.items[fi];
+          ring.cap.querySelector('b').textContent = r.name;
+          ring.cap.querySelector('small').textContent = `${r.aka ? 'aka ' + r.aka + ' · ' : ''}${FE.SIMS[r.recipe.sim].name}`;
+        }
       }
     }
     orbitRAF = requestAnimationFrame(orbitTick);
@@ -955,31 +965,78 @@
     el.classList.remove('square');
     return el;
   };
+  // the loaded cartridges (C1–C7) as a revolving carousel; the front one is described below it
+  const HOME_W = 200, HOME_H = 266;
+  function renderCartDetail(i) {
+    const ring = homeRing, r = ring.items[i], rp = getRepertoire();
+    $('slotNav').querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
+    ring.cards.forEach((c, k) => c.classList.toggle('front', k === i));
+    const el = $('cartDetail');
+    if (!r) {
+      el.innerHTML = `<div class="cd-head display"><span class="kicker">C${i + 1}</span><h2>Empty slot</h2></div>
+        <p class="hint">Nothing is loaded in C${i + 1} yet.</p>
+        <div class="cd-actions"><button class="btn primary" data-a="add">Add a cartridge</button><button class="btn" data-a="pick">Pick from library</button></div>`;
+      el.querySelector('[data-a=add]').onclick = () => openForm({ slot: i + 1 });
+      el.querySelector('[data-a=pick]').onclick = () => pickForRepertoire(i);
+      return;
+    }
+    const [code, title] = splitName(r.name);
+    const lines = recipeText(r.recipe).split('\n').slice(1).map((l) => l.split(/:\s(.+)/));
+    if (r.iso) lines.push(['ISO', r.iso]);
+    if (r.ec) lines.push(['Exposure comp.', r.ec]);
+    el.innerHTML = `<div class="cd-head display"><span class="kicker">C${i + 1} · ${esc(code)}</span><h2>${esc(r.aka || title)}</h2></div>
+      <dl class="cd-settings">${lines.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v || '')}</dd></div>`).join('')}</dl>
+      ${r.notes ? `<p class="hint">${esc(r.notes)}</p>` : ''}
+      <div class="cd-actions"><button class="btn primary" data-a="sim">Try in simulator</button><button class="btn" data-a="edit">Edit</button>
+        <button class="btn" data-a="copy">Copy settings</button><button class="btn" data-a="swap">Swap</button><button class="btn danger" data-a="rm">Unload</button></div>`;
+    el.querySelector('[data-a=sim]').onclick = () => loadRecipe(r);
+    el.querySelector('[data-a=edit]').onclick = () => openForm({ entry: r });
+    el.querySelector('[data-a=copy]').onclick = (e) => { navigator.clipboard.writeText(recipeText(r.recipe, r.aka || r.name)); e.target.textContent = 'Copied'; };
+    el.querySelector('[data-a=swap]').onclick = () => pickForRepertoire(i);
+    el.querySelector('[data-a=rm]').onclick = () => { rp[i] = null; persist(); renderHome(); };
+  }
   function renderHome() {
-    const grid = $('repGrid');
-    grid.innerHTML = '';
     const rp = getRepertoire();
-    rp.forEach((id, i) => {
-      const r = id && store.recipes.find((x) => x.id === id);
-      if (!r) {
-        const b = document.createElement('button');
-        b.className = 'rep-empty display';
-        b.innerHTML = `<span class="n">C${i + 1}</span><span>Add a recipe</span>`;
-        b.onclick = () => openForm({ slot: i + 1 });
-        grid.appendChild(b);
-        return;
-      }
-      const el = editorialCard(r);
-      el.classList.add('rep');
-      el.insertAdjacentHTML('beforeend', `<span class="slot-no">C${i + 1}</span>`);
-      const act = el.querySelector('.pin-actions');
-      act.innerHTML = '<button data-a="edit">Edit</button><button data-a="chg">Swap</button><button data-a="rm" class="del">Remove</button>';
-      act.querySelector('[data-a=edit]').onclick = () => openForm({ entry: r });
-      act.querySelector('[data-a=chg]').onclick = () => pickForRepertoire(i);
-      act.querySelector('[data-a=rm]').onclick = () => { rp[i] = null; persist(); renderHome(); };
-      grid.appendChild(el);
+    const items = rp.map((id) => (id && store.recipes.find((x) => x.id === id)) || null);
+    const n = items.length, step = 360 / n;
+    const R = Math.max(220, (n * (HOME_W + 44)) / (2 * Math.PI));
+    const first = homeRing ? null : Math.max(0, items.findIndex(Boolean));
+    homeRing = Object.assign(homeRing || { theta: -first * step, vel: 0, snap: null }, {
+      n, step, R, items, cardW: HOME_W, drag: null, hover: false, fi: -1, visible: true, noAutoSpin: true,
     });
-    $('repCount').textContent = `${rp.filter(Boolean).length} of ${REP_SLOTS} slots set · ${CAM_NAME}`;
+    const ring = homeRing, stage = $('homeStage'), ringEl = $('homeRing');
+    stage.style.height = Math.round(HOME_H * 1.3 + R * 0.42 + 30) + 'px';
+    ring.el = ringEl;
+    ring.stage = stage;
+    ringEl.innerHTML = '';
+    ring.cards = items.map((r, i) => {
+      const c = document.createElement('div');
+      c.className = 'ocard hcard display' + (r ? '' : ' empty');
+      c.style.transform = `rotateY(${i * step}deg) translateZ(${R}px)`;
+      if (r) {
+        c.appendChild(thumbCanvas(r.recipe));
+        const [code, title] = splitName(r.name);
+        c.insertAdjacentHTML('beforeend', `<span class="hc-slot">C${i + 1}</span>
+          <div class="hc-bottom"><b>${esc(r.aka || title)}</b><small>${esc(code || sim3(r))} · ${esc(FE.SIMS[r.recipe.sim].name)}</small></div>`);
+      } else {
+        c.innerHTML = `<span class="hc-slot">C${i + 1}</span><div class="hc-empty">Empty slot<br><small>Add a cartridge</small></div>`;
+      }
+      c.onclick = () => {
+        if (ring.moved) return;
+        if (frontIndex(ring) !== i) rotateRingTo(ring, i);
+        else if (r) loadRecipe(r);
+        else openForm({ slot: i + 1 });
+      };
+      ringEl.appendChild(c);
+      return c;
+    });
+    attachRingDrag(stage, ring);
+    ring.onFront = renderCartDetail;
+    $('slotNav').innerHTML = items.map((r, i) => `<button class="slot-chip${r ? '' : ' none'}" data-i="${i}" aria-label="Show C${i + 1}">C${i + 1}</button>`).join('');
+    $('slotNav').querySelectorAll('button').forEach((b) => (b.onclick = () => rotateRingTo(ring, Number(b.dataset.i))));
+    fitRings();
+    if (!orbitRAF) orbitRAF = requestAnimationFrame(orbitTick);
+    $('repCount').textContent = `${rp.filter(Boolean).length} of ${REP_SLOTS} cartridges loaded · ${CAM_NAME}`;
 
     const root = $('homePlaylists');
     root.innerHTML = '';
@@ -1148,7 +1205,7 @@
     window.scrollTo(0, 0);
     if (t === 'home') renderHome();
     if (t === 'library') renderLibrary();
-    else stopOrbit();
+    else if (t !== 'home') stopOrbit();
     if (t === 'lineups') renderLineups();
     if (t === 'editor') renderQuickLineup();
   }
@@ -1224,6 +1281,10 @@
     if (e.code === 'Space' && !e.repeat && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && lastOut) {
       e.preventDefault(); state.showOriginal = true; draw();
     }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!homeRing || !$('home').classList.contains('active') || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); rotateRingTo(homeRing, (frontIndex(homeRing) + (e.key === 'ArrowRight' ? 1 : -1) + homeRing.n) % homeRing.n); }
   });
   document.addEventListener('keyup', (e) => { if (e.code === 'Space' && state.showOriginal) { state.showOriginal = false; draw(); } });
   window.addEventListener('calibration-changed', () => {

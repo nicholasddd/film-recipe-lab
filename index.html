@@ -120,10 +120,10 @@
   .ring-stage { position: relative; perspective: 1100px; perspective-origin: 50% -35%; cursor: grab; touch-action: pan-y; user-select: none; overflow: hidden; }
   .ring-stage.dragging { cursor: grabbing; }
   .ring { position: absolute; left: 50%; top: 56%; transform-style: preserve-3d; }
-  .ocard { position: absolute; width: 150px; height: 200px; left: -75px; top: -100px; border-radius: 14px; overflow: hidden; background: #222; cursor: pointer; }
+  .ocard { position: absolute; width: 150px; height: 200px; left: -75px; top: -100px; border-radius: 5px; overflow: hidden; background: #222; cursor: pointer; }
   .ocard canvas { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
   .ocard span { position: absolute; left: 8px; bottom: 8px; font-size: 10px; letter-spacing: .08em; background: #000a; color: #fff; padding: 2px 6px; border-radius: 3px; }
-  .ocard.front { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .ocard.front { outline: 2px solid var(--accent); outline-offset: 3px; outline-radius: 5px; }
   .ring-cap { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 2px 0 22px; min-height: 40px; }
   .ring-cap b { font-size: 20px; font-weight: 500; letter-spacing: -.03em; display: block; }
   .ring-cap small { color: var(--muted); }
@@ -145,6 +145,30 @@
   .rep-empty { aspect-ratio: 3 / 4; border: 1px dashed #444; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--muted); cursor: pointer; background: none; }
   .rep-empty .n { font-size: 44px; font-weight: 500; letter-spacing: -.04em; color: #555; }
   .rep-empty:hover { border-color: var(--accent); color: var(--text); }
+  .home-ring { display: flex; flex-direction: column; align-items: center; }
+  .home-ring .ring-stage { width: 100%; perspective-origin: 50% -30%; }
+  .hcard { width: 200px; height: 266px; left: -100px; top: -133px; border-radius: 5px; }
+  .hcard::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35), transparent 30%, transparent 55%, rgba(0,0,0,.7)); pointer-events: none; }
+  .hcard .hc-slot { position: absolute; z-index: 1; top: 10px; left: 12px; right: auto; bottom: auto; background: none; padding: 0; font-size: 30px; font-weight: 500; letter-spacing: -.04em; color: #fff; }
+  .hcard .hc-bottom { position: absolute; z-index: 1; left: 12px; right: 12px; bottom: 12px; color: #fff; }
+  .hcard .hc-bottom b { display: block; font-size: 19px; font-weight: 500; letter-spacing: -.03em; line-height: 1; text-transform: uppercase; }
+  .hcard .hc-bottom small { font-size: 10px; opacity: .75; letter-spacing: .04em; }
+  .hcard.empty { background: #1b1b1b; border: 1px dashed #4a4a4a; }
+  .hcard.empty::after { display: none; }
+  .hcard.empty .hc-slot { color: #666; }
+  .hc-empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #777; font-size: 13px; line-height: 1.5; }
+  .ocard.back span, .ocard.back .hc-bottom, .ocard.back .hc-empty { opacity: 0; }
+  .slot-nav { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+  .slot-chip { background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 5px 12px; cursor: pointer; font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .slot-chip.none { color: #666; border-style: dashed; }
+  .slot-chip.on { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 600; }
+  .cart-detail { width: min(760px, 100%); margin-top: 22px; padding: 18px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .cd-head h2 { margin: 2px 0 12px; font-size: clamp(30px, 5vw, 52px); font-weight: 500; letter-spacing: -.05em; line-height: .9; text-transform: uppercase; }
+  .cd-head .kicker { margin: 0; }
+  .cd-settings { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 18px; margin: 0 0 12px; }
+  .cd-settings dt { color: var(--muted); font-size: 11px; }
+  .cd-settings dd { margin: 0; }
+  .cd-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .pl-section { margin-top: 36px; }
   .pl-head { display: flex; align-items: baseline; gap: 14px; border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 12px; }
   .pl-head .idx { color: var(--accent); font-size: 12px; }
@@ -240,11 +264,15 @@
       <h1>Current<br>repertoire</h1>
     </div>
     <div class="home-actions">
-      <p class="hint">Your custom settings, C1–C7, as set on the camera. Click a card to try it in the simulator.</p>
-      <div><button class="btn primary" id="homeAdd">Add recipe</button> <button class="btn" id="homePaste">Paste text</button> <button class="btn" id="homeSim">Open simulator</button></div>
+      <p class="hint">The cartridges loaded in your camera's custom settings, C1–C7. Drag or use ← → to turn the carousel. Click the front cartridge to try it in the simulator.</p>
+      <div><button class="btn primary" id="homeAdd">Add cartridge</button> <button class="btn" id="homePaste">Paste text</button> <button class="btn" id="homeSim">Open simulator</button></div>
     </div>
   </div>
-  <div class="rep-grid" id="repGrid"></div>
+  <div class="home-ring">
+    <div class="ring-stage" id="homeStage"><div class="ring" id="homeRing"></div></div>
+    <div class="slot-nav" id="slotNav" aria-label="Cartridge slots"></div>
+    <div class="cart-detail" id="cartDetail" aria-live="polite"></div>
+  </div>
   <div class="home-hero display" style="margin-top:72px">
     <div><div class="kicker">Scroll the scenes</div><h1 style="font-size:clamp(40px,7vw,96px)">Playlists</h1></div>
   </div>
