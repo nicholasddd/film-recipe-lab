@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Film Recipe Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #141414; --panel: #1d1d1d; --panel2: #262626; --line: #333;
+    --text: #e8e6e1; --muted: #9a978f; --accent: #e8a33d; --danger: #d9534f;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-size: 13px; }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; margin: 0; letter-spacing: .04em; }
+  header h1 span { color: var(--accent); }
+  nav { display: flex; gap: 4px; }
+  nav button { background: none; border: 1px solid transparent; color: var(--muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit; }
+  nav button.active { color: var(--text); border-color: var(--line); background: var(--panel2); }
+  .spacer { flex: 1; }
+  button, select, input { font: inherit; color: var(--text); }
+  .btn { background: var(--panel2); border: 1px solid var(--line); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  .btn:hover { border-color: #555; }
+  .btn.primary { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  .btn.small { padding: 3px 8px; font-size: 12px; }
+  .btn.danger { color: var(--danger); }
+  select, input[type=number], input[type=text], textarea { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
+  textarea { width: 100%; color: var(--text); font: inherit; resize: vertical; }
+  .view { display: none; }
+  .view.active { display: grid; }
+
+  /* editor */
+  #editor { grid-template-columns: 1fr 340px; height: calc(100vh - 49px); }
+  .stage { display: flex; flex-direction: column; min-width: 0; }
+  .canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 12px; position: relative; }
+  #view { max-width: 100%; max-height: 100%; cursor: zoom-in; box-shadow: 0 4px 30px #0008; }
+  #view.zoomed { cursor: zoom-out; }
+  .badge { position: absolute; top: 18px; left: 18px; background: #000a; padding: 3px 8px; border-radius: 4px; font-size: 11px; color: var(--muted); pointer-events: none; }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); }
+  .toolbar label { color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .quick-lineup { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); overflow-x: auto; }
+  .quick-lineup .slot { min-width: 82px; padding: 4px 6px; font-size: 11px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .quick-lineup .slot b { color: var(--accent); margin-right: 4px; }
+  .quick-lineup .slot.on { border-color: var(--accent); }
+  aside { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 4px 14px 20px; }
+  aside h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 18px 0 8px; display: flex; justify-content: space-between; align-items: center; }
+  .row { display: grid; grid-template-columns: 112px 1fr 38px; align-items: center; gap: 8px; margin: 5px 0; }
+  .row > span:first-child { color: var(--muted); }
+  .row select { grid-column: 2 / 4; }
+  .row input[type=range] { width: 100%; accent-color: var(--accent); }
+  .row output { text-align: right; font-variant-numeric: tabular-nums; }
+  .exp-grid { display: grid; grid-template-columns: 70px 1fr 1fr; gap: 6px 8px; align-items: center; }
+  .exp-grid .hd { color: var(--muted); font-size: 11px; }
+  .exp-grid input, .exp-grid select { width: 100%; }
+  .ev { margin-top: 8px; padding: 6px 8px; background: var(--panel2); border-radius: 5px; color: var(--muted); }
+  .ev b { color: var(--text); }
+  .hint { color: var(--muted); font-size: 11px; line-height: 1.4; margin: 6px 0; }
+  .warn { color: var(--accent); }
+
+  /* library + lineups */
+  #library, #lineups { padding: 16px 20px; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--panel2); border: 1px solid var(--line); color: var(--muted); padding: 4px 10px; border-radius: 999px; cursor: pointer; font-size: 12px; }
+  .chip.on { color: #1a1a1a; background: var(--accent); border-color: var(--accent); }
+  .chip .n { opacity: .6; margin-left: 4px; }
+  .lib-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+  .card canvas { width: 100%; aspect-ratio: 3/2; object-fit: cover; display: block; background: #000; cursor: pointer; }
+  .card .body { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .card .name { font-weight: 600; }
+  .card .meta { color: var(--muted); font-size: 11px; }
+  .card .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .card .tags span { font-size: 10px; background: var(--panel2); padding: 1px 6px; border-radius: 3px; color: var(--muted); }
+  .card .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
+  /* library: mode toggle */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { background: none; border: 0; color: var(--muted); padding: 5px 14px; cursor: pointer; font: inherit; }
+  .seg button.on { background: var(--accent); color: #1a1a1a; font-weight: 600; }
+
+  /* library: staggered editorial grid */
+  .display { font-family: 'Inter Tight', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .masonry { columns: 4 250px; column-gap: 18px; }
+  .masonry > .empty { column-span: all; }
+  .pin { break-inside: avoid; margin: 0 0 18px; position: relative; overflow: hidden; border-radius: 3px; container-type: inline-size; color: #fff; background: #222; width: 100%; }
+  .pin-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2, .7, .2, 1); cursor: pointer; }
+  .pin:hover .pin-img { transform: scale(1.045); }
+  .pin::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background: linear-gradient(180deg, rgba(0,0,0,.38), transparent 34%, transparent 55%, rgba(0,0,0,.55)); }
+  .pin.light::before { background: linear-gradient(180deg, rgba(255,255,255,.18), transparent 34%, transparent 55%, rgba(0,0,0,.5)); }
+  .pin > *:not(.pin-img) { position: absolute; z-index: 2; }
+  .pin-top { top: 0; left: 0; right: 0; padding: 4.5cqw 5cqw; pointer-events: none; }
+  .pin-top h3 { margin: 0; font-weight: 500; text-transform: uppercase; font-size: 12cqw; line-height: .86; letter-spacing: -.05em; overflow-wrap: anywhere; }
+  .pin.light .pin-top { color: #17130f; }
+  .pin-code { display: inline-block; margin-top: 3cqw; font-size: 10px; letter-spacing: .1em; padding: 2px 6px; border: 1px solid currentColor; border-radius: 2px; }
+  .pin-meta { left: 5cqw; right: 5cqw; bottom: calc(5cqw + 62px); display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 10px; line-height: 1.3; }
+  .pin-meta span { display: block; opacity: .6; }
+  .pin.square .pin-meta { display: none; }
+  .pin-card { left: 5cqw; bottom: 5cqw; display: flex; gap: 8px; align-items: center; background: #fff; color: #111; padding: 5px 10px 5px 5px; border-radius: 2px; width: min(72%, 230px); font-size: 11px; box-shadow: 0 8px 24px #0005; }
+  .pin-card canvas { width: 44px; height: 44px; flex: none; border-radius: 1px; }
+  .pin-card > div { min-width: 0; flex: 1; }
+  .pin-card b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pin-card small { color: #777; font-size: 10px; }
+  .pin-open { background: none; border: 0; color: #111; font: inherit; font-size: 10px; cursor: pointer; padding: 0; white-space: nowrap; text-decoration: underline; text-underline-offset: 2px; }
+  .pin-actions { right: 5cqw; bottom: 5cqw; display: flex; flex-direction: column; gap: 4px; opacity: 0; transition: opacity .2s; }
+  .pin:hover .pin-actions, .pin:focus-within .pin-actions { opacity: 1; }
+  .pin-actions button { background: #000b; color: #fff; border: 0; font-size: 10px; padding: 4px 8px; border-radius: 2px; cursor: pointer; }
+  .pin-actions button.del:hover { color: var(--danger); }
+  @media (hover: none) { .pin-actions { opacity: 1; } }
+
+  /* library: 3D carousels */
+  .orbit { display: flex; flex-direction: column; }
+  .orbit-block header { display: flex; align-items: baseline; gap: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .orbit-block .idx { color: var(--accent); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .orbit-block h2 { margin: 0; font-size: clamp(34px, 6vw, 76px); font-weight: 500; text-transform: uppercase; letter-spacing: -.05em; line-height: .9; }
+  .orbit-block .cnt { margin-left: auto; color: var(--muted); }
+  .ring-stage { position: relative; perspective: 1100px; perspective-origin: 50% -35%; cursor: grab; touch-action: pan-y; user-select: none; overflow: hidden; }
+  .ring-stage.dragging { cursor: grabbing; }
+  .ring { position: absolute; left: 50%; top: 56%; transform-style: preserve-3d; }
+  .ocard { position: absolute; width: 150px; height: 200px; left: -75px; top: -100px; border-radius: 14px; overflow: hidden; background: #222; cursor: pointer; }
+  .ocard canvas { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .ocard span { position: absolute; left: 8px; bottom: 8px; font-size: 10px; letter-spacing: .08em; background: #000a; color: #fff; padding: 2px 6px; border-radius: 3px; }
+  .ocard.front { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .ring-cap { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 2px 0 22px; min-height: 40px; }
+  .ring-cap b { font-size: 20px; font-weight: 500; letter-spacing: -.03em; display: block; }
+  .ring-cap small { color: var(--muted); }
+  .ring-nav { background: none; border: 1px solid var(--line); color: var(--text); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
+  .ring-nav:hover { border-color: var(--accent); }
+
+  /* home */
+  #home { padding: 0 20px 80px; grid-template-columns: minmax(0, 1fr); align-content: start; }
+  .home-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 28px 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  .home-hero h1 { font-size: clamp(52px, 10vw, 140px); font-weight: 500; letter-spacing: -.055em; line-height: .84; margin: 0; text-transform: uppercase; }
+  .kicker { color: var(--accent); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }
+  .home-actions { max-width: 320px; display: flex; flex-direction: column; gap: 10px; }
+  .home-actions p { margin: 0; }
+  .rep-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .rep-grid .pin { margin: 0; min-width: 0; }
+  .pin.rep .pin-top { padding-right: 22cqw; }
+  .slot-no { position: absolute; z-index: 3; top: 4cqw; right: 5cqw; font-size: 10cqw; font-weight: 500; letter-spacing: -.04em; color: #fff; }
+  .pin.light .slot-no { color: #17130f; }
+  .rep-empty { aspect-ratio: 3 / 4; border: 1px dashed #444; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--muted); cursor: pointer; background: none; }
+  .rep-empty .n { font-size: 44px; font-weight: 500; letter-spacing: -.04em; color: #555; }
+  .rep-empty:hover { border-color: var(--accent); color: var(--text); }
+  .pl-section { margin-top: 36px; }
+  .pl-head { display: flex; align-items: baseline; gap: 14px; border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 12px; }
+  .pl-head .idx { color: var(--accent); font-size: 12px; }
+  .pl-head h2 { margin: 0; font-size: clamp(30px, 5vw, 60px); font-weight: 500; text-transform: uppercase; letter-spacing: -.05em; line-height: .9; }
+  .pl-head .cnt { margin-left: auto; color: var(--muted); }
+  .pl-strip { display: grid; grid-auto-flow: column; grid-auto-columns: 220px; gap: 12px; overflow-x: auto; padding-bottom: 10px; scroll-snap-type: x mandatory; }
+  .pl-strip .pin { margin: 0; scroll-snap-align: start; }
+  .pl-strip .pin-meta { display: none; }
+  @media (max-width: 1000px) { .rep-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  .empty { color: var(--muted); padding: 40px; text-align: center; border: 1px dashed var(--line); border-radius: 8px; }
+  .lineup-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .lineup-grid .card .slotno { color: var(--accent); font-weight: 700; margin-right: 6px; }
+  .lineup-grid .card.emptyslot canvas { opacity: .25; }
+
+  #calibrate { padding: 16px 20px; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 14px; }
+  .cal-intro { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+  .cal-intro ol { margin: 6px 0 0; padding-left: 18px; }
+  .cal-pair { display: grid; grid-template-columns: 1fr 1fr 240px; gap: 14px; }
+  .drop { position: relative; aspect-ratio: 3/2; border: 1px dashed #555; border-radius: 8px; cursor: pointer; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--panel); }
+  .drop.over { border-color: var(--accent); }
+  .drop canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .drop .lbl { position: relative; text-align: center; background: #000b; padding: 6px 10px; border-radius: 6px; }
+  .drop.has .lbl { position: absolute; bottom: 8px; left: 8px; font-size: 11px; text-align: left; }
+  .cal-side { display: flex; flex-direction: column; gap: 8px; }
+  .cal-compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .cal-compare figure { margin: 0; }
+  .cal-compare canvas { width: 100%; display: block; border-radius: 6px; }
+  .cal-compare figcaption { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .cal-compare figcaption b { color: var(--text); }
+  table.cal { width: 100%; border-collapse: collapse; }
+  table.cal td, table.cal th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.cal th { color: var(--muted); font-weight: normal; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  @media (max-width: 900px) { .cal-pair, .cal-compare { grid-template-columns: 1fr; } }
+  .pp { display: grid; grid-template-columns: 1fr 1.1fr; gap: 4px 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; }
+  .pp.skip { opacity: .5; }
+  .pp input[type=text] { width: 100%; font-weight: 600; }
+  .pp .chips { gap: 4px; }
+  .pp .chip { padding: 2px 8px; font-size: 11px; }
+  .pp .w { color: var(--accent); font-size: 11px; grid-column: 1 / -1; }
+  .form-dlg { width: min(940px, 95vw); }
+  .form-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 22px; }
+  .form-fields, .form-top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+  .frow { display: flex; flex-direction: column; gap: 3px; }
+  .frow > span { color: var(--muted); font-size: 11px; }
+  .frow select, .frow input { width: 100%; }
+  .frow small { color: var(--accent); font-size: 10px; }
+  .frow.locked select { opacity: .4; }
+  .row input:disabled, .row select:disabled { opacity: .35; }
+  .form-side { display: flex; flex-direction: column; gap: 8px; }
+  #formPreview canvas { width: 100%; border-radius: 4px; display: block; }
+  #formCode b { color: var(--text); }
+  #formScn .chip { padding: 2px 8px; font-size: 11px; }
+  @media (max-width: 760px) { .form-grid { grid-template-columns: 1fr; } }
+  .qm { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; padding: 0; border-radius: 50%; border: 1px solid #555; background: none; color: var(--muted); font-size: 10px; line-height: 1; cursor: pointer; vertical-align: 1px; }
+  .qm:hover, .qm:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+  #tip { position: fixed; z-index: 1000; background: #2b2b2b; color: var(--text); border: 1px solid #444; border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.45; box-shadow: 0 10px 30px #0008; }
+  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; width: min(440px, 92vw); padding: 18px; }
+  dialog::backdrop { background: #000a; }
+  dialog h2 { margin: 0 0 12px; font-size: 15px; }
+  dialog .field { margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+  dialog .field > span { color: var(--muted); font-size: 12px; }
+  dialog input[type=text] { width: 100%; }
+  dialog .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  @media (max-width: 900px) {
+    #editor { grid-template-columns: 1fr; height: auto; }
+    .canvas-wrap { height: 60vh; }
+    .lineup-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>FILM RECIPE <span>LAB</span></h1>
+  <nav>
+    <button data-tab="home" class="active">Home</button>
+    <button data-tab="library">Library</button>
+    <button data-tab="lineups">Playlists</button>
+    <button data-tab="editor">Simulator</button>
+    <button data-tab="calibrate">Calibrate</button>
+  </nav>
+  <div class="spacer"></div>
+  <button class="btn" id="btnUpload">Upload photo</button>
+  <button class="btn" id="btnSample">Test chart</button>
+  <input type="file" id="file" accept="image/*" hidden>
+</header>
+
+<!-- ============ HOME ============ -->
+<section id="home" class="view active">
+  <div class="home-hero display">
+    <div>
+      <div class="kicker">On camera now · <span id="repCount"></span></div>
+      <h1>Current<br>repertoire</h1>
+    </div>
+    <div class="home-actions">
+      <p class="hint">Your custom settings, C1–C7, as set on the camera. Click a card to try it in the simulator.</p>
+      <div><button class="btn primary" id="homeAdd">Add recipe</button> <button class="btn" id="homePaste">Paste text</button> <button class="btn" id="homeSim">Open simulator</button></div>
+    </div>
+  </div>
+  <div class="rep-grid" id="repGrid"></div>
+  <div class="home-hero display" style="margin-top:72px">
+    <div><div class="kicker">Scroll the scenes</div><h1 style="font-size:clamp(40px,7vw,96px)">Playlists</h1></div>
+  </div>
+  <div id="homePlaylists"></div>
+</section>
+
+<!-- ============ SIMULATOR ============ -->
+<section id="editor" class="view">
+  <div class="stage">
+    <div class="canvas-wrap">
+      <canvas id="view"></canvas>
+      <div class="badge" id="badge"></div>
+    </div>
+    <div class="toolbar">
+      <label>Compare <input type="range" id="split" min="0" max="100" value="0"></label>
+      <span class="hint">Hold <b>space</b> to see the original · click the image to zoom to 100%</span>
+      <div class="spacer"></div>
+      <span class="hint" id="timing"></span>
+      <button class="btn" id="btnExport">Export JPEG</button>
+    </div>
+    <div class="quick-lineup" id="quickLineup"></div>
+  </div>
+  <aside>
+    <h3>Recipe <span><button class="btn small" id="btnReset">Reset</button> <button class="btn small" id="btnCopy">Copy text</button> <button class="btn small primary" id="btnSave">Save</button></span></h3>
+    <div id="loadedName" class="hint"></div>
+    <div id="recipeControls"></div>
+    <h3>Exposure</h3>
+    <div class="exp-grid">
+      <span></span><span class="hd">Shot at</span><span class="hd">Simulate</span>
+      <span class="hd">Aperture</span><input type="number" id="oAp" step="0.1" min="0.95"><select id="nAp"></select>
+      <span class="hd">Shutter</span><input type="text" id="oSh"><select id="nSh"></select>
+      <span class="hd">ISO</span><input type="number" id="oIso" step="1" min="50"><select id="nIso"></select>
+    </div>
+    <div class="row"><span>Exp. comp.</span><input type="range" id="ec" min="-3" max="3" step="0.3333333"><output id="ecOut"></output></div>
+    <div class="ev" id="evInfo"></div>
+    <p class="hint">"Shot at" is read from the photo's EXIF data when it has any. Changing aperture also changes lens vignetting. Depth of field isn't simulated yet.</p>
+  </aside>
+</section>
+
+<!-- ============ LIBRARY ============ -->
+<section id="library" class="view">
+  <div class="lib-bar">
+    <div class="seg" role="group" aria-label="Library view">
+      <button id="modeGrid" class="on">Grid</button><button id="modeOrbit">3D</button>
+    </div>
+    <input type="text" id="libSearch" placeholder="Search recipes…">
+    <label class="hint">Sort <select id="libSort">
+      <option value="new">Newest</option><option value="name">Name</option><option value="sim">Film simulation</option>
+    </select></label>
+    <div class="spacer"></div>
+    <button class="btn small primary" id="btnNewRecipe">+ New recipe</button>
+    <button class="btn small" id="btnPaste">Paste recipes</button>
+    <button class="btn small" id="btnAddScenario">+ Scenario</button>
+    <button class="btn small" id="btnExportLib">Export library</button>
+    <button class="btn small" id="btnImportLib">Import</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div>
+  <div class="chips" id="libChips"></div>
+  <div class="masonry" id="libGrid"></div>
+  <div class="orbit" id="libOrbit" hidden></div>
+</section>
+
+<!-- ============ LINEUPS ============ -->
+<section id="lineups" class="view">
+  <div class="lib-bar">
+    <span class="hint">Scenario</span>
+    <div class="chips" id="lineupChips"></div>
+  </div>
+  <div class="lib-bar">
+    <p class="hint" style="margin:0">Each scenario has 8 slots. Previews use the current photo, so upload a shot from that scenario to compare the whole lineup.</p>
+    <div class="spacer"></div>
+    <button class="btn small primary" id="btnAutoFill">Auto-fill empty slots</button>
+    <button class="btn small" id="btnAutoRebuild">Rebuild all lineups</button>
+  </div>
+  <div class="hint" id="autoMsg"></div>
+  <div class="lineup-grid" id="lineupGrid"></div>
+</section>
+
+<!-- ============ CALIBRATE ============ -->
+<section id="calibrate" class="view">
+  <div class="cal-intro">
+    <b>How to shoot calibration pairs</b>
+    <ol class="hint">
+      <li><b>Best:</b> shoot one RAW, then use the camera's <i>RAW Conversion</i> to save one JPEG as PROVIA and another as the sim you want to calibrate. The two files line up perfectly.</li>
+      <li><b>Also good:</b> use <i>Film Simulation Bracketing</i> (BKT), which saves 3 sims from a single exposure.</li>
+      <li>Otherwise, use a tripod and the same exposure for both shots.</li>
+      <li>Keep everything else identical: DR100, Highlight/Shadow/Color 0, grain and Color Chrome off, the same white balance (not Auto).</li>
+      <li>Pick colourful scenes with a wide tonal range (skin, foliage, sky, saturated objects). Each new pair adds to that sim's calibration.</li>
+    </ol>
+  </div>
+  <div class="cal-pair">
+    <div class="drop" id="dropRef"><canvas></canvas><div class="lbl">Reference: <b>PROVIA</b> JPEG<br><span class="hint">click or drop</span></div></div>
+    <div class="drop" id="dropTgt"><canvas></canvas><div class="lbl">Target: same scene in another sim<br><span class="hint">click or drop</span></div></div>
+    <div class="cal-side">
+      <label class="hint">Target simulation</label>
+      <select id="calSim"></select>
+      <div class="hint" id="calDetect"></div>
+      <button class="btn primary" id="calAdd" disabled>Add pair to calibration</button>
+      <div class="hint" id="calMsg"></div>
+    </div>
+  </div>
+  <input type="file" id="calFile" accept="image/jpeg,image/*" hidden>
+  <div id="calResult"></div>
+  <div class="lib-bar">
+    <h3 style="margin:0;font-size:13px">Calibrated simulations</h3>
+    <div class="spacer"></div>
+    <label class="hint"><input type="checkbox" id="calEnabled" checked> Use calibrations in the editor</label>
+  </div>
+  <div id="calStatus"></div>
+</section>
+
+<dialog id="saveDlg">
+  <h2 id="saveTitle">Save recipe</h2>
+  <div class="field"><span>Name</span><input type="text" id="saveName" placeholder="e.g. Warm Coastal Neg"></div>
+  <div class="field"><span>Scenarios</span><div class="chips" id="saveChips"></div></div>
+  <div class="field"><span>Notes</span><textarea id="saveNotes" rows="3" placeholder="When it works, what to watch out for…"></textarea></div>
+  <div class="foot">
+    <button class="btn" id="saveAsNew" hidden>Save as new</button>
+    <button class="btn" id="saveCancel">Cancel</button>
+    <button class="btn primary" id="saveOk">Save</button>
+  </div>
+</dialog>
+
+<dialog id="pasteDlg" style="width:min(860px,94vw)">
+  <h2>Paste recipes</h2>
+  <p class="hint">Paste one or many recipes in the usual "Setting: value" format (from a website, a caption, your notes). Put the recipe's name on its own line above its settings, and any link next to it so the source is credited.
+    Names follow <b>SIM-TempContrast Descriptor</b>: Temp is <b>W</b>arm, <b>N</b>eutral or <b>C</b>ool, and Contrast is <b>S</b>oft, <b>M</b>edium or <b>H</b>ard. Example: <i>CN-WH Portra 400</i>.</p>
+  <textarea id="pasteText" rows="10" placeholder="My Summer Neg&#10;Film Simulation: Classic Negative&#10;Grain Effect: Weak, Small&#10;Color Chrome Effect: Strong&#10;Color Chrome FX Blue: Weak&#10;White Balance: Auto, +2 Red &amp; -4 Blue&#10;Dynamic Range: DR400&#10;Highlight: -1&#10;Shadow: +1&#10;Color: +2&#10;Sharpness: -2&#10;High ISO NR: -4&#10;Clarity: -2&#10;ISO: Auto up to 6400&#10;Exposure Compensation: +1/3"></textarea>
+  <div class="foot" style="justify-content:flex-start"><button class="btn primary" id="pasteParse">Analyse</button><span class="hint" id="pasteSummary"></span></div>
+  <div id="pastePreview" style="max-height:42vh;overflow:auto;margin-top:10px"></div>
+  <div class="foot">
+    <label class="hint"><input type="checkbox" id="pasteRep"> Add to my current repertoire (fills empty C1–C7 slots)</label>
+    <label class="hint" style="margin-right:auto"><input type="checkbox" id="pasteAutoLineup" checked> Auto-fill empty playlist slots</label>
+    <button class="btn" id="pasteCancel">Cancel</button>
+    <button class="btn primary" id="pasteAdd" disabled>Add to library</button>
+  </div>
+</dialog>
+
+<dialog id="formDlg" class="form-dlg">
+  <h2 id="formTitle">New recipe</h2>
+  <div class="form-grid">
+    <div>
+      <div class="form-top">
+        <label class="frow"><span>Name</span><input type="text" id="formName" placeholder="e.g. Snowy Day"></label>
+        <label class="frow"><span>Camera slot<button type="button" class="qm" data-help="slot" aria-label="What does this do?">?</button></span><select id="formSlot"></select></label>
+      </div>
+      <div id="formFields" class="form-fields"></div>
+      <div class="form-top" style="margin-top:12px">
+        <label class="frow"><span>ISO (how you shoot it)<button type="button" class="qm" data-help="iso" aria-label="What does this do?">?</button></span><input type="text" id="formIso" list="isoList" placeholder="e.g. Auto up to 6400"></label>
+        <label class="frow"><span>Exposure compensation<button type="button" class="qm" data-help="ec" aria-label="What does this do?">?</button></span><select id="formEc"></select></label>
+      </div>
+      <datalist id="isoList"><option>Auto up to 3200</option><option>Auto up to 6400</option><option>Auto up to 12800</option><option>160</option><option>320</option><option>640</option><option>1600</option><option>3200</option></datalist>
+    </div>
+    <div class="form-side">
+      <div id="formPreview"></div>
+      <div class="hint" id="formCode"></div>
+      <div class="hint" style="margin-top:12px">Scenarios</div>
+      <div class="chips" id="formScn"></div>
+      <textarea id="formNotes" rows="3" placeholder="Notes"></textarea>
+    </div>
+  </div>
+  <div class="foot"><button class="btn" id="formCancel">Cancel</button><button class="btn primary" id="formSave">Save recipe</button></div>
+</dialog>
+
+<dialog id="pickDlg">
+  <h2 id="pickTitle">Choose recipe</h2>
+  <div class="chips" style="margin-bottom:10px"><button class="chip on" id="pickOnlyScn">This scenario</button><button class="chip" id="pickAll">All recipes</button></div>
+  <div id="pickList" style="max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:6px"></div>
+  <div class="foot"><button class="btn danger" id="pickClear">Clear slot</button><button class="btn" id="pickCancel">Cancel</button></div>
+</dialog>
+
+<script src="film-engine.js"></script>
+<script src="my-recipes.js"></script>
+<script src="recipe-tools.js"></script>
+<script src="app.js"></script>
+<script src="calibrate.js"></script>
+</body>
+</html>
