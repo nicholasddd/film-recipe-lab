@@ -64,5 +64,19 @@ window.MY_RECIPES = {
         color: 4, sharpness: -1, nr: -4, clarity: 0,
       },
     },
+    {
+      id: 'mine-snowski',
+      aka: 'Snowski',
+      scenarios: ['Snow'],
+      notes: 'Grain is to taste (Weak, Small is the starting point).',
+      recipe: {
+        sim: 'classicNeg',
+        grain: 1, grainSize: 'small',
+        cce: 2, ccfxb: 1,
+        wb: 'asShot', wbR: -1, wbB: -3,
+        drp: 'off', dr: 400, highlight: -1, shadow: -1.5,
+        color: 4, sharpness: -2, nr: -4, clarity: 0,
+      },
+    },
   ],
 };
