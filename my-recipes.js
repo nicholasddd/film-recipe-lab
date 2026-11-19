@@ -211,5 +211,21 @@ window.MY_RECIPES = {
         color: 2, sharpness: -1, nr: -2, clarity: 0,
       },
     },
+    {
+      id: 'mine-foggy-city',
+      aka: 'Foggy City',
+      // cool shift, very hard shadows over soft highlights, big grain: misty grey city light.
+      // Nostalgic Neg isn't on the X-T30 II, so it stays out of trip playlists.
+      scenarios: [],
+      notes: 'Uses Nostalgic Neg., which the X-T30 II does not have: simulator only.',
+      recipe: {
+        sim: 'nostalgicNeg',
+        grain: 2, grainSize: 'large',
+        cce: 2, ccfxb: 2,
+        wb: 'autoWhite', wbR: -3, wbB: 3,
+        drp: 'off', dr: 400, highlight: -2, shadow: 4,
+        color: 4, sharpness: -2, nr: 0, clarity: 0,
+      },
+    },
   ],
 };
