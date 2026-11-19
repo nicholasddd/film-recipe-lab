@@ -1645,6 +1645,7 @@
       row.innerHTML = `<span>${c.label}${qm(c.k)}</span>`;
       const sel = document.createElement('select');
       c.opts.forEach(([v, t]) => sel.add(new Option(t, v)));
+      if (![...sel.options].some((o) => o.value === String(f[c.k]))) sel.add(new Option(c.k === 'kelvin' ? f[c.k] + 'K' : String(f[c.k]), f[c.k]));
       sel.value = String(f[c.k]);
       sel.disabled = lk;
       sel.onchange = () => {

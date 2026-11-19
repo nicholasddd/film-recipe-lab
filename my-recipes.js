@@ -8,7 +8,7 @@
 window.MY_RECIPES = {
   camera: 'X-T30 II',
   // your playlists, in order; changing this list replaces the playlists in the app
-  playlists: ['Winter Pilgrimage 2026', 'Rainy Day', 'Beach', 'European Summer', 'Dolomites 2027'],
+  playlists: ['Winter Pilgrimage 2026', 'Rainy Day', 'Beach', 'European Summer', 'Dolomites 2027', 'TEST'],
   repertoire: [
     {
       id: 'mine-c3-shotbygreg',
@@ -225,6 +225,52 @@ window.MY_RECIPES = {
         wb: 'autoWhite', wbR: -3, wbB: 3,
         drp: 'off', dr: 400, highlight: -2, shadow: 4,
         color: 4, sharpness: -2, nr: 0, clarity: 0,
+      },
+    },
+    {
+      id: 'mine-wes-anderson-green',
+      aka: 'Wes Anderson Green',
+      // very warm 4350K with R+6/B-8 on muted Classic Chrome, flat DR-P Strong, Clarity -3, shot bright: warm pastel haze
+      scenarios: ['European Summer'],
+      iso: 'Auto up to 6400',
+      ec: '+2/3 to +1 1/3',
+      notes: 'If your camera has no 4350K step, use the nearest Kelvin value.',
+      recipe: {
+        sim: 'classicChrome',
+        grain: 1, grainSize: 'small',
+        cce: 0, ccfxb: 1,
+        wb: 'kelvin', kelvin: 4350, wbR: 6, wbB: -8,
+        drp: 'strong',
+        color: 4, sharpness: -2, nr: -4, clarity: -3,
+      },
+    },
+    // ---- X-T30 II versions of recipes the camera can't run (my approximations), kept in TEST ----
+    {
+      id: 'mine-nostalgic-haze-t30',
+      aka: 'Nostalgic Haze T30',
+      scenarios: ['TEST'],
+      notes: 'X-T30 II approximation of Nostalgic Haze: Classic Neg base, more amber (R+3/B-5), softer shadows (-1.5), Color +2.',
+      recipe: {
+        sim: 'classicNeg',
+        grain: 1, grainSize: 'small',
+        cce: 2, ccfxb: 1,
+        wb: 'autoWhite', wbR: 3, wbB: -5,
+        drp: 'off', dr: 400, highlight: -1.5, shadow: -1.5,
+        color: 2, sharpness: 1, nr: -4, clarity: 0,
+      },
+    },
+    {
+      id: 'mine-foggy-city-t30',
+      aka: 'Foggy City T30',
+      scenarios: ['TEST'],
+      notes: 'X-T30 II approximation of Foggy City: Classic Neg base, less cool shift (R-2/B+2), Shadow +3, Color +3.',
+      recipe: {
+        sim: 'classicNeg',
+        grain: 2, grainSize: 'large',
+        cce: 2, ccfxb: 2,
+        wb: 'autoWhite', wbR: -2, wbB: 2,
+        drp: 'off', dr: 400, highlight: -2, shadow: 3,
+        color: 3, sharpness: -2, nr: 0, clarity: 0,
       },
     },
   ],
