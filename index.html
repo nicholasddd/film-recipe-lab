@@ -258,22 +258,7 @@
   .scene.on { border-color: var(--accent); box-shadow: 0 0 14px rgba(126, 126, 126, .35); }
   .scene-credit { padding: 2px 12px 8px; font-size: 11px; min-height: 16px; }
   .scene-credit a { color: var(--accent-ice); }
-  /* home hero: title on the left, the camera on the right */
-  .hero-cam-row { align-items: center; flex-wrap: nowrap; }
-  .hero-text { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-  .hero-text .hint { max-width: 420px; margin: 4px 0 0; }
-  .hero-cam { margin: 0; flex: 0 1 460px; max-width: 40%; min-width: 0; position: relative; }
-  .hero-text { flex: 1 1 auto; }
-  .hero-cam-row h1 { font-size: clamp(46px, 7.4vw, 132px); }
-  .cam3d { width: 100%; aspect-ratio: 4 / 3; cursor: grab; touch-action: none; position: relative;
-    background: radial-gradient(ellipse 60% 55% at 50% 55%, rgba(126, 126, 126, .16), rgba(48, 48, 48, .05) 45%, transparent 72%); }
-  .cam3d.dragging { cursor: grabbing; }
-  .cam3d canvas { width: 100% !important; height: 100% !important; display: block; }
-  .cam3d.no-webgl { display: grid; place-items: center; color: var(--muted); font-size: 12px; }
-  .hero-cam figcaption { display: flex; justify-content: space-between; gap: 10px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 2px; padding: 0 18px; }
-  .hero-cam .credit { text-transform: none; letter-spacing: 0; opacity: .75; }
-  .hero-cam a { color: inherit; }
-  @media (max-width: 760px) { .hero-cam-row { flex-wrap: wrap; } .hero-cam { flex-basis: 100%; max-width: 100%; } }
+  .hero-btns { display: flex; flex-wrap: wrap; gap: 8px; }
   .cart-list { display: flex; flex-direction: column; gap: 8px; }
   .crow { display: grid; grid-template-columns: 128px minmax(0, 1.3fr) 64px minmax(0, 1.6fr) auto; align-items: center; gap: 20px; padding: 10px 14px 10px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
   .crow-img { width: 128px; height: 80px; object-fit: cover; border-radius: 3px; cursor: pointer; display: block; }
@@ -500,17 +485,15 @@
 
 <!-- ============ HOME ============ -->
 <section id="home" class="view active">
-  <div class="home-hero hero-cam-row display">
-    <div class="hero-text">
+  <div class="home-hero display">
+    <div>
       <div class="kicker">On camera now · <span id="repCount"></span></div>
       <h1>Current<br>repertoire</h1>
+    </div>
+    <div class="home-actions">
       <p class="hint">The cartridges loaded in your camera's custom settings, C1–C7. Drag to move around the carousel, or use the arrow keys.</p>
       <div class="hero-btns"><button class="btn primary" id="homeAdd">Add cartridge</button> <button class="btn" id="homePaste">Paste text</button> <button class="btn" id="homeSim">Open simulator</button></div>
     </div>
-    <figure class="hero-cam">
-      <div id="cam3d" class="cam3d" role="img" aria-label="3D model of a Fujifilm X-T30 II with a zoom lens. Drag to rotate."></div>
-      <figcaption><span>Fujifilm X-T30 II</span><span class="credit">Drag to rotate</span></figcaption>
-    </figure>
   </div>
   <div class="home-ring">
     <div class="ring-stage" id="homeStage"><div class="ring" id="homeRefl" aria-hidden="true"></div><div class="refl-fade" id="homeFade"></div><div class="ring" id="homeRing"></div></div>
@@ -754,13 +737,11 @@
   <div class="foot"><button class="btn danger" id="pickClear">Clear slot</button><button class="btn" id="pickCancel">Cancel</button></div>
 </dialog>
 
-<script src="js/film-engine.js?v=20261120-1533"></script>
-<script src="data/my-recipes.js?v=20261120-1533"></script>
-<script src="data/samples.js?v=20261120-1533"></script>
-<script src="js/recipe-tools.js?v=20261120-1533"></script>
-<script src="js/app.js?v=20261120-1533"></script>
-<script src="js/calibrate.js?v=20261120-1533"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/camera3d.js?v=20261120-1533"></script>
+<script src="js/film-engine.js?v=20261120-2236"></script>
+<script src="data/my-recipes.js?v=20261120-2236"></script>
+<script src="data/samples.js?v=20261120-2236"></script>
+<script src="js/recipe-tools.js?v=20261120-2236"></script>
+<script src="js/app.js?v=20261120-2236"></script>
+<script src="js/calibrate.js?v=20261120-2236"></script>
 </body>
 </html>

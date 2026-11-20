@@ -21,7 +21,6 @@ js/film-engine.js     image pipeline (film sims, tone, colour, grain, calibratio
 js/recipe-tools.js    recipe text parser, look analysis, naming, camera profiles
 js/app.js             the app: pages, carousel, library, playlists, simulator, compare
 js/calibrate.js       calibration from PROVIA/sim JPEG pairs
-js/camera3d.js        rotatable 3D camera in the Home hero
 data/my-recipes.js    your camera, playlists and cartridges (edit this to add recipes)
 data/samples.js       sample scene photos and their credits
 tools/release.sh      bump cache version, commit and push

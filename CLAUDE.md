@@ -14,7 +14,6 @@ An archive of Fujifilm film recipes ("cartridges") for the owner's **X-T30 II**,
 | `js/recipe-tools.js` | Text parser for pasted recipes, look analysis, scenario scoring, naming, camera profiles (`CAMERAS`). |
 | `js/app.js` | The app: pages, Home carousel, reveal animation, Library, Playlists, Simulator, Compare, forms, storage, seeding. |
 | `js/calibrate.js` | Calibrate page: learns 17³ LUTs from PROVIA/sim JPEG pairs. |
-| `js/camera3d.js` | Rotatable three.js model of the camera in the Home hero (three r128 from cdnjs). |
 | `data/my-recipes.js` | **The owner's data:** camera, playlists, and every cartridge. Source of truth that ships with the site. |
 | `data/samples.js` | 24 Wikimedia Commons sample scenes (3 per category) with author/licence credits. |
 | `tools/release.sh` | Bumps `?v=` and optionally commits and pushes. |
