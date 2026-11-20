@@ -1,19 +1,53 @@
 # Film Recipe Lab
 
-A browser app for testing Fujifilm-style film recipes on your own photos, keeping a library of recipes, and organising them into the camera's custom slots and scenario playlists.
+An archive of Fujifilm film recipes ("cartridges") for an X-T30 II: what's loaded in the camera, playlists by trip, and a simulator for trying looks on real photos.
 
 **Live:** https://nicholasddd.github.io/film-recipe-lab/
 
-- **Home**: the current repertoire (custom settings C1–C7 on the X-T30 II), then playlists by scenario.
+- **Home**: the cartridges in the camera's custom settings (C1–C7) on a 3D carousel, with playlists below.
 - **Playlists**: cartridges grouped by trip or scene, as a staggered grid or 3D carousels.
-- **Library**: every saved cartridge, in a playlist or not. Paste recipes in as text, or add them with dropdowns that match the camera menus. Click any cartridge to open it.
+- **Library**: every saved cartridge. Paste recipes in as text or add them with dropdowns that match the camera menus. Click any cartridge to open it.
 - **Simulator**: pick a photo on the left (your own or one of 24 sample scenes), click a cartridge on the right to apply it, and fine-tune settings including aperture, shutter and ISO.
 - **Compare**: 2–4 cartridges side by side across the sample scenes.
 - **Calibrate**: learn a film simulation's exact colours from PROVIA/sim JPEG pairs shot on your camera.
 
-The film simulations are approximations, not Fujifilm's processing. Everything runs in the browser; recipes you add in the app are stored in that browser only. Your own repertoire lives in `my-recipes.js`, so it ships with the site.
+The film simulations are approximations, not Fujifilm's processing.
 
-Run locally with any static server, for example `python3 -m http.server`.
+## Project layout
+
+```
+index.html            markup and styles
+js/film-engine.js     image pipeline (film sims, tone, colour, grain, calibration LUTs)
+js/recipe-tools.js    recipe text parser, look analysis, naming, camera profiles
+js/app.js             the app: pages, carousel, library, playlists, simulator, compare
+js/calibrate.js       calibration from PROVIA/sim JPEG pairs
+js/camera3d.js        rotatable 3D camera in the Home hero
+data/my-recipes.js    your camera, playlists and cartridges (edit this to add recipes)
+data/samples.js       sample scene photos and their credits
+tools/release.sh      bump cache version, commit and push
+CLAUDE.md             project guide and standing rules for Claude Code sessions
+```
+
+## Run locally
+
+```bash
+python3 -m http.server 8813
+```
+
+Then open http://localhost:8813.
+
+## Release
+
+```bash
+tools/release.sh "Describe the change"
+```
+
+This bumps the `?v=` cache-buster on every script, commits everything and pushes. GitHub Pages updates the live site in about a minute.
+
+## Your data and moving devices
+
+- Cartridges and playlists in `data/my-recipes.js` ship with the site, so they appear on every device.
+- Edits made in the app, calibrations and Compare picks are stored in that browser only. Use **Library → Export backup** to save them to a file, and **Import backup** on the new device to restore them.
 
 ## Sample scene credits
 

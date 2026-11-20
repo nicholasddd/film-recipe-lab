@@ -1,2 +1,4 @@
-.claude/
 .DS_Store
+# local Claude Code state, except the preview server config
+.claude/*
+!.claude/launch.json

@@ -1819,10 +1819,20 @@
   $('pasteCancel').onclick = () => $('pasteDlg').close();
   $('btnAutoFill').onclick = () => autoBuild('fill');
   $('btnAutoRebuild').onclick = () => autoBuild('rebuild');
+  // Full backup of everything that lives only in this browser: library edits, playlists, camera slots,
+  // calibrations, Compare picks and view preferences. Import merges it back (used when moving devices).
+  const CALIB_KEY = 'filmRecipeLab.calib.v1';
+  const readLS = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   $('btnExportLib').onclick = () => {
+    const backup = {
+      app: 'film-recipe-lab', backupVersion: 2, exported: new Date().toISOString(),
+      library: store, calibration: readLS(CALIB_KEY), compare: cmpIds, libMode: state.libMode,
+    };
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' }));
-    a.download = 'film-recipes.json'; a.click();
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+    a.download = `film-recipe-lab-backup-${backup.exported.slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   $('btnImportLib').onclick = () => $('importFile').click();
   $('importFile').onchange = async (e) => {
@@ -1830,11 +1840,29 @@
     if (!f) return;
     try {
       const data = JSON.parse(await f.text());
-      const ids = new Set(store.recipes.map((r) => r.id));
-      (data.recipes || []).forEach((r) => { if (!ids.has(r.id)) store.recipes.push(r); });
-      (data.scenarios || []).forEach((s) => { if (!store.scenarios.includes(s)) store.scenarios.push(s); });
-      Object.entries(data.lineups || {}).forEach(([s, l]) => { if (!store.lineups[s] || !store.lineups[s].some(Boolean)) store.lineups[s] = l; });
-      persist(); renderLibrary(); renderLineups(); renderQuickLineup();
+      const lib = data.library || data; // older exports were just the library
+      let added = 0, updated = 0;
+      (lib.recipes || []).forEach((r) => {
+        const cur = store.recipes.find((x) => x.id === r.id);
+        if (!cur) { store.recipes.push(r); added++; }
+        else if ((r.updated || 0) > (cur.updated || 0)) { Object.assign(cur, r); updated++; } // keep the more recently edited copy
+      });
+      (lib.scenarios || []).forEach((s) => { if (!store.scenarios.includes(s)) store.scenarios.push(s); });
+      if (Array.isArray(lib.repertoire) && lib.repertoire.some(Boolean)) store.repertoire = lib.repertoire.slice(); // camera slots as backed up
+      if (lib.seeded && typeof lib.seeded === 'object' && !Array.isArray(lib.seeded)) store.seeded = { ...(store.seeded || {}), ...lib.seeded };
+      Object.entries(lib.lineups || {}).forEach(([s, l]) => { if (!store.lineups[s] || !store.lineups[s].some(Boolean)) store.lineups[s] = l; });
+      persist();
+      let calibrated = 0;
+      if (data.calibration && data.calibration.sims) {
+        const cur = readLS(CALIB_KEY) || { enabled: true, sims: {} };
+        cur.sims = { ...cur.sims, ...data.calibration.sims };
+        calibrated = Object.keys(data.calibration.sims).length;
+        try { localStorage.setItem(CALIB_KEY, JSON.stringify(cur)); } catch (err) { /* ignore */ }
+      }
+      if (Array.isArray(data.compare)) { cmpIds = data.compare; saveCmp(); }
+      if (data.libMode) { try { localStorage.setItem('filmRecipeLab.libMode', data.libMode); } catch (err) { /* ignore */ } }
+      alert(`Restored ${added} new and ${updated} updated cartridge${added + updated === 1 ? '' : 's'}${calibrated ? `, plus calibrations for ${calibrated} film simulation${calibrated === 1 ? '' : 's'}` : ''}. The page will reload.`);
+      location.reload();
     } catch (err) { alert('Could not import: ' + err.message); }
     e.target.value = '';
   };
