@@ -1459,14 +1459,14 @@
     if (cdBusy) return;
     cdBusy = true;
     const old = box.firstElementChild, h0 = box.getBoundingClientRect().height;
-    old.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 170, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards' }).finished.then(() => {
+    old.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 280, easing: 'cubic-bezier(.4, 0, .6, 1)', fill: 'forwards' }).finished.then(() => {
       const k = cdPending;
       cdPending = null;
       const inner = build(k);
       box.replaceChildren(inner);
       const h1 = box.getBoundingClientRect().height;
-      if (Math.abs(h1 - h0) > 1) box.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: 420, easing: EASE.out });
-      inner.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: EASE.out, fill: 'both' });
+      if (Math.abs(h1 - h0) > 1) box.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: 650, easing: EASE.inOut });
+      inner.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 650, easing: EASE.out, fill: 'both' });
       cdBusy = false;
       if (cdPending !== null && cdPending !== k) swapDetail(cdPending);
     });
